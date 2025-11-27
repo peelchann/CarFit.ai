@@ -55,8 +55,9 @@ GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 # MODEL CONFIGURATION
 # ============================================
 
-# Image generation model (Nano Banana - fast)
-IMAGE_MODEL = "gemini-2.5-flash-preview-05-20"  # Latest flash model with image gen
+# Image generation model - CORRECT MODEL ID from official docs
+# gemini-2.5-flash-image: Input=Images+text, Output=Images+text, Image generation=Supported
+IMAGE_MODEL = "gemini-2.5-flash-image"
 
 # Alternative: Nano Banana Pro (higher quality, slower)
 # IMAGE_MODEL = "gemini-3-pro-image-preview"
