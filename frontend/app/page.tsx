@@ -24,7 +24,7 @@ export default function Home() {
   // Fetch parts from backend
   useEffect(() => {
     setIsLoadingParts(true);
-    fetch("http://localhost:8000/api/parts")
+    fetch("http://localhost:8001/api/parts")
       .then((res) => res.json())
       .then((data) => {
         if (data.parts) {
@@ -45,7 +45,7 @@ export default function Home() {
       const base64data = reader.result as string;
       
       try {
-        const response = await fetch("/api/generate", {
+        const response = await fetch("http://localhost:8001/api/generate", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
