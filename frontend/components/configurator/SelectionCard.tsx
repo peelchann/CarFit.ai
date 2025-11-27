@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, ChevronDown, ChevronUp, Circle, Square, CheckSquare } from "lucide-react";
+ import { Check, ChevronDown, ChevronUp, Circle, Square, CheckSquare } from "lucide-react";
 import Image from "next/image";
 import { PartOption, SelectionType } from "@/lib/parts-data";
 
