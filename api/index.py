@@ -2,14 +2,16 @@
 CarFit Studio - API Backend (VroomRoom)
 =======================================
 
-AI-powered car customization using Nano Banana Pro (Gemini 3 Pro Image).
+AI-powered car customization using Gemini Image Generation (Nano Banana).
 
-MODEL: gemini-3-pro-image-preview
-- Inputs: Text + Images (up to 14 images, 7MB each)
-- Outputs: Text + Image
-- Max input tokens: 65,536
-- Max output tokens: 32,768
-- Supported: image/png, image/jpeg, image/webp, image/heic, image/heif
+MODELS:
+- gemini-2.5-flash-image: Fast image generation (Nano Banana)
+- gemini-3-pro-image-preview: Advanced image generation (Nano Banana Pro)
+
+SDK: google-genai (NEW SDK, not google-generativeai)
+- Uses: from google import genai
+- Client: genai.Client()
+- Method: client.models.generate_content(model=..., contents=[...])
 
 ENDPOINTS:
 - GET  /api/health     - Health check
@@ -25,15 +27,17 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional, List, Literal
 
-# Try to import Google Generative AI (Gemini)
+# Try to import NEW Google GenAI SDK
 try:
-    import google.generativeai as genai
-    GEMINI_AVAILABLE = True
+    from google import genai
+    from google.genai import types
+    GENAI_AVAILABLE = True
 except ImportError:
-    GEMINI_AVAILABLE = False
+    GENAI_AVAILABLE = False
     genai = None
+    types = None
 
-app = FastAPI(title="CarFit API", version="0.5.0")
+app = FastAPI(title="CarFit API", version="0.6.0")
 
 # Allow CORS for frontend
 app.add_middleware(
@@ -46,23 +50,19 @@ app.add_middleware(
 
 # Configure Gemini API
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
-if GEMINI_AVAILABLE and GEMINI_API_KEY:
-    genai.configure(api_key=GEMINI_API_KEY)
 
 # ============================================
 # MODEL CONFIGURATION
 # ============================================
 
-# Nano Banana Pro - Gemini 3 Pro Image Preview
-# This is the correct model ID for image generation
-NANO_BANANA_PRO_MODEL = "gemini-3-pro-image-preview"
+# Image generation model (Nano Banana - fast)
+IMAGE_MODEL = "gemini-2.5-flash-preview-05-20"  # Latest flash model with image gen
 
-# Fallback text model if image model unavailable
-FALLBACK_TEXT_MODEL = "gemini-2.0-flash-exp"
+# Alternative: Nano Banana Pro (higher quality, slower)
+# IMAGE_MODEL = "gemini-3-pro-image-preview"
 
-# Default image generation settings
-DEFAULT_ASPECT_RATIO = "16:9"  # Options: 1:1, 3:2, 2:3, 3:4, 4:3, 4:5, 5:4, 9:16, 16:9, 21:9
-DEFAULT_IMAGE_SIZE = "2K"      # Options: 1K, 2K, 4K
+# Fallback text model
+TEXT_MODEL = "gemini-2.0-flash-exp"
 
 
 # ============================================
@@ -91,8 +91,6 @@ class GenerateRequest(BaseModel):
     part_name: str           # Name of the part
     part_category: str       # Category: wheels, roof, or body
     part_description: str    # Description of the part
-    aspect_ratio: Optional[str] = None  # e.g., "16:9"
-    image_size: Optional[str] = None    # e.g., "2K"
 
 class GenerateResponse(BaseModel):
     status: str
@@ -154,77 +152,64 @@ PART_OPTIONS: List[PartOption] = [
 
 def get_car_customization_prompt(part_name: str, part_category: str, part_description: str) -> str:
     """
-    Generate the prompt for Nano Banana Pro to blend the part onto the car.
-    
-    Following the AI_Image_Generation_Spec.md requirements:
-    - Same car color, make, model as Image 1
-    - Same background
-    - Matched lighting and shadows
-    - Seamless integration (factory-installed look)
-    - Single output image
+    Generate the prompt for image editing - blending part onto car.
     """
     
     category_instructions = {
         'wheels': """
-WHEEL INSTALLATION:
+WHEEL INSTALLATION TASK:
 - Replace ALL visible wheels on the car with the wheel design from Image 2
 - Maintain correct wheel size proportions relative to the car
 - Add realistic tire sidewalls around the new wheels
 - Match the wheel orientation and angle to the car's perspective
 - Apply realistic shadows under the wheels touching the ground
-- Ensure proper wheel well fitment - wheels sit naturally in the fenders
+- Ensure proper wheel well fitment
 """,
         'roof': """
-ROOF INSTALLATION:
+ROOF INSTALLATION TASK:
 - Mount the roof accessory from Image 2 onto the car's roof
 - Position it centered on the roof, properly aligned with the car's body lines
 - Add realistic mounting hardware (roof rails, crossbars) if needed
 - Ensure the accessory follows the roof's curvature naturally
 - Apply proper shadows where the accessory meets the roof
-- Maintain correct scale - the accessory should look proportional to the car
 """,
         'body': """
-BODY KIT INSTALLATION:
+BODY KIT INSTALLATION TASK:
 - Integrate the body styling part from Image 2 seamlessly onto the car
 - For front lips: attach to the bottom edge of the front bumper
 - For side skirts: extend along the lower door panels
 - For spoilers: mount on the rear trunk lid or roof edge
 - Match the part's color to the car OR keep it black/carbon fiber as shown
 - Ensure smooth transitions between the part and existing body panels
-- Add realistic shadows and reflections on the new part
 """
     }
     
     instruction = category_instructions.get(part_category, category_instructions['body'])
     
-    return f"""You are an advanced car customization editor powered by Nano Banana Pro.
+    return f"""You are an expert car customization photo editor.
 
-TASK: Generate a single photorealistic image showing the car from Image 1 with the {part_name} from Image 2 professionally installed.
+I'm providing two images:
+- Image 1: A photo of a car (the base vehicle)
+- Image 2: An aftermarket part ({part_name} - {part_description})
 
-PART DETAILS:
-- Part Name: {part_name}
-- Category: {part_category}
-- Description: {part_description}
+YOUR TASK: Create a single photorealistic image showing the car from Image 1 with the {part_name} from Image 2 professionally installed.
 
 {instruction}
 
-CRITICAL REQUIREMENTS (from AI_Image_Generation_Spec.md):
-1. PRESERVE THE CAR: Keep the car's make, model, color, and all features EXACTLY as in Image 1
-2. PRESERVE BACKGROUND: Do NOT change the environment or background
-3. MATCH LIGHTING: The installed part must have identical lighting direction and intensity
-4. MATCH PERSPECTIVE: The part must follow the exact camera angle of the car
-5. REALISTIC SHADOWS: Add shadows that match existing shadows in the scene
-6. SEAMLESS INTEGRATION: The part should look factory-installed, not photoshopped
-7. HIGH QUALITY: Output a single high-resolution photorealistic image
+CRITICAL REQUIREMENTS:
+1. Keep the car's make, model, color, and all features EXACTLY as in Image 1
+2. Keep the original background and environment unchanged
+3. Match lighting, shadows, and reflections to the original photo
+4. The installed part should look factory-installed, not photoshopped
+5. Output a single high-resolution photorealistic image
 
 DO NOT:
 - Change the car's color, shape, or any features
 - Add text, watermarks, or labels
 - Show the part separately - it must be installed on the car
 - Create multiple images or before/after comparisons
-- Add any elements not in the original scene
 
-OUTPUT: A single clean, photorealistic image of the customized car."""
+Generate the final customized car image now."""
 
 
 # ============================================
@@ -232,59 +217,41 @@ OUTPUT: A single clean, photorealistic image of the customized car."""
 # ============================================
 
 def detect_mime_type(base64_data: str) -> str:
-    """
-    Detect MIME type from base64 image data based on magic bytes.
-    Defaults to image/png if unable to detect.
-    """
+    """Detect MIME type from base64 image data based on magic bytes."""
     try:
-        # Decode first few bytes to check magic numbers
         decoded = base64.b64decode(base64_data[:32])
-        
-        # PNG: 89 50 4E 47
         if decoded[:4] == b'\x89PNG':
             return "image/png"
-        # JPEG: FF D8 FF
         elif decoded[:3] == b'\xff\xd8\xff':
             return "image/jpeg"
-        # WebP: 52 49 46 46 ... 57 45 42 50
-        elif decoded[:4] == b'RIFF' and decoded[8:12] == b'WEBP':
+        elif decoded[:4] == b'RIFF' and len(decoded) > 11 and decoded[8:12] == b'WEBP':
             return "image/webp"
-        # HEIC/HEIF: Check for ftyp box
-        elif b'ftyp' in decoded[:12]:
-            return "image/heic"
         else:
-            return "image/png"  # Default
+            return "image/png"
     except Exception:
-        return "image/png"  # Default on error
+        return "image/png"
 
 
 # ============================================
-# CORE: Generate car preview with Nano Banana Pro
+# CORE: Generate car preview with Gemini
 # ============================================
 
-async def generate_car_preview_with_nano_banana_pro(
+async def generate_car_preview(
     base_car_image: str,
     parts_image: str,
-    prompt: str,
-    aspect_ratio: str = DEFAULT_ASPECT_RATIO,
-    image_size: str = DEFAULT_IMAGE_SIZE
+    prompt: str
 ) -> dict:
     """
-    Generate an edited car image using Nano Banana Pro (gemini-3-pro-image-preview).
+    Generate an edited car image using Gemini image generation.
     
-    Args:
-        base_car_image: Base64 encoded car photo
-        parts_image: Base64 encoded part image
-        prompt: Text prompt for the generation
-        aspect_ratio: Output aspect ratio (e.g., "16:9")
-        image_size: Output size ("1K", "2K", "4K")
-    
-    Returns:
-        dict with status, image_base64 or message
+    Uses the NEW google-genai SDK:
+    - from google import genai
+    - client = genai.Client()
+    - client.models.generate_content(model=..., contents=[...])
     """
     
-    if not GEMINI_AVAILABLE or not genai:
-        raise Exception("Gemini AI package not available")
+    if not GENAI_AVAILABLE:
+        raise Exception("google-genai package not available. Install with: pip install google-genai")
     
     if not GEMINI_API_KEY:
         raise Exception("GEMINI_API_KEY not configured")
@@ -299,73 +266,55 @@ async def generate_car_preview_with_nano_banana_pro(
     car_mime_type = detect_mime_type(base_car_image)
     part_mime_type = detect_mime_type(parts_image)
     
-    # Initialize the Nano Banana Pro model
-    model = genai.GenerativeModel(NANO_BANANA_PRO_MODEL)
+    # Initialize the client with API key
+    client = genai.Client(api_key=GEMINI_API_KEY)
     
-    # Build the content parts
+    # Build content parts with images
+    # Format: text prompt + inline images
     contents = [
-        # Text prompt first
-        {"text": prompt},
-        # Image 1: Base car photo
-        {
-            "inline_data": {
-                "mime_type": car_mime_type,
-                "data": base_car_image
-            }
-        },
-        # Image 2: Part to install
-        {
-            "inline_data": {
-                "mime_type": part_mime_type,
-                "data": parts_image
-            }
-        }
+        prompt,
+        types.Part.from_bytes(
+            data=base64.b64decode(base_car_image),
+            mime_type=car_mime_type
+        ),
+        types.Part.from_bytes(
+            data=base64.b64decode(parts_image),
+            mime_type=part_mime_type
+        )
     ]
     
-    # Generation config with imageConfig for image output
-    # NOTE: Do NOT set response_mime_type for image generation
-    generation_config = {
-        "image_config": {
-            "aspect_ratio": aspect_ratio,
-            "image_size": image_size
-        }
-    }
-    
     # Call the model
-    response = model.generate_content(
-        contents=contents,
-        generation_config=generation_config
+    response = client.models.generate_content(
+        model=IMAGE_MODEL,
+        contents=contents
     )
     
     # Process response - look for image in parts
-    if response.candidates and len(response.candidates) > 0:
-        candidate = response.candidates[0]
+    for part in response.parts:
+        # Check for text response
+        if part.text is not None:
+            return {
+                "status": "text_response",
+                "message": part.text
+            }
         
-        for part in candidate.content.parts:
-            # Check for inline image data
-            if hasattr(part, 'inline_data') and part.inline_data:
-                mime_type = part.inline_data.mime_type or "image/png"
-                image_data = part.inline_data.data
-                
-                # Convert to base64 if it's bytes
-                if isinstance(image_data, bytes):
-                    image_b64 = base64.b64encode(image_data).decode('utf-8')
-                else:
-                    image_b64 = image_data
-                
-                return {
-                    "status": "success",
-                    "image_base64": f"data:{mime_type};base64,{image_b64}"
-                }
+        # Check for inline image data
+        if part.inline_data is not None:
+            mime_type = part.inline_data.mime_type or "image/png"
+            image_data = part.inline_data.data
             
-            # If text response (fallback)
-            if hasattr(part, 'text') and part.text:
-                return {
-                    "status": "text_response",
-                    "message": part.text
-                }
+            # Convert to base64 if it's bytes
+            if isinstance(image_data, bytes):
+                image_b64 = base64.b64encode(image_data).decode('utf-8')
+            else:
+                image_b64 = image_data
+            
+            return {
+                "status": "success",
+                "image_base64": f"data:{mime_type};base64,{image_b64}"
+            }
     
-    raise Exception("Model did not return an image. Try a different prompt or images.")
+    raise Exception("Model did not return an image or text. Try a different prompt.")
 
 
 # ============================================
@@ -377,13 +326,11 @@ def health_check():
     return {
         "status": "ok",
         "service": "CarFit Backend (VroomRoom)",
-        "version": "0.5.0",
-        "model": NANO_BANANA_PRO_MODEL,
-        "fallback_model": FALLBACK_TEXT_MODEL,
-        "gemini_available": GEMINI_AVAILABLE,
-        "gemini_configured": bool(GEMINI_API_KEY),
-        "default_aspect_ratio": DEFAULT_ASPECT_RATIO,
-        "default_image_size": DEFAULT_IMAGE_SIZE
+        "version": "0.6.0",
+        "image_model": IMAGE_MODEL,
+        "text_model": TEXT_MODEL,
+        "genai_available": GENAI_AVAILABLE,
+        "api_key_configured": bool(GEMINI_API_KEY)
     }
 
 
@@ -412,19 +359,21 @@ def get_parts_by_category(category_id: PartCategoryId):
 @app.post("/api/generate")
 async def generate_image(request: GenerateRequest):
     """
-    Generate a photorealistic car customization image using Nano Banana Pro.
+    Generate a photorealistic car customization image.
     
-    Uses gemini-3-pro-image-preview with:
+    Uses Gemini image generation with:
     - Image 1: User's car photo (base64)
     - Image 2: Part to install (base64)
     - Text prompt: Blending instructions
-    - imageConfig: aspectRatio and imageSize
     
     Returns generated image as base64 or error message.
     """
     
-    if not GEMINI_AVAILABLE:
-        return GenerateResponse(status="error", message="Gemini AI package not available")
+    if not GENAI_AVAILABLE:
+        return GenerateResponse(
+            status="error", 
+            message="google-genai package not installed. Run: pip install google-genai"
+        )
     
     if not GEMINI_API_KEY:
         return GenerateResponse(
@@ -441,13 +390,11 @@ async def generate_image(request: GenerateRequest):
             request.part_description
         )
         
-        # Call Nano Banana Pro
-        result = await generate_car_preview_with_nano_banana_pro(
+        # Call Gemini
+        result = await generate_car_preview(
             base_car_image=request.car_image,
             parts_image=request.part_image,
-            prompt=prompt,
-            aspect_ratio=request.aspect_ratio or DEFAULT_ASPECT_RATIO,
-            image_size=request.image_size or DEFAULT_IMAGE_SIZE
+            prompt=prompt
         )
         
         if result["status"] == "success":
@@ -465,7 +412,7 @@ async def generate_image(request: GenerateRequest):
         
     except Exception as e:
         error_msg = str(e)
-        print(f"Nano Banana Pro error: {error_msg}")
+        print(f"Gemini error: {error_msg}")
         
         # Handle specific errors
         if "429" in error_msg or "quota" in error_msg.lower():
@@ -475,10 +422,9 @@ async def generate_image(request: GenerateRequest):
             )
         
         if "404" in error_msg or "not found" in error_msg.lower():
-            # Model not available - try fallback
             return GenerateResponse(
                 status="model_unavailable",
-                message=f"Model {NANO_BANANA_PRO_MODEL} not available. Please check API access.",
+                message=f"Model {IMAGE_MODEL} not available. Please check API access.",
                 image_url="https://images.unsplash.com/photo-1544636331-e26879cd4d9b?w=800"
             )
         
@@ -496,48 +442,33 @@ async def generate_image(request: GenerateRequest):
 
 @app.get("/api/test-gemini")
 async def test_gemini():
-    """Test Gemini API connection with both models."""
-    if not GEMINI_AVAILABLE:
-        return {"error": "google-generativeai package not installed"}
+    """Test Gemini API connection."""
+    if not GENAI_AVAILABLE:
+        return {"error": "google-genai package not installed. Run: pip install google-genai"}
     
     if not GEMINI_API_KEY:
         return {"error": "GEMINI_API_KEY not configured"}
     
-    results = {}
-    
-    # Test Nano Banana Pro model
     try:
-        model = genai.GenerativeModel(NANO_BANANA_PRO_MODEL)
-        response = model.generate_content("Say 'Nano Banana Pro is ready!' in one sentence.")
-        results["nano_banana_pro"] = {
+        client = genai.Client(api_key=GEMINI_API_KEY)
+        
+        # Test with a simple text prompt
+        response = client.models.generate_content(
+            model=TEXT_MODEL,
+            contents="Say 'Gemini is ready!' in one sentence."
+        )
+        
+        return {
             "status": "success",
-            "model": NANO_BANANA_PRO_MODEL,
-            "response": response.text if hasattr(response, 'text') else "Model ready"
+            "image_model": IMAGE_MODEL,
+            "text_model": TEXT_MODEL,
+            "test_response": response.text if hasattr(response, 'text') else str(response)
         }
     except Exception as e:
-        results["nano_banana_pro"] = {
+        return {
             "status": "error",
-            "model": NANO_BANANA_PRO_MODEL,
             "error": str(e)
         }
-    
-    # Test fallback model
-    try:
-        fallback = genai.GenerativeModel(FALLBACK_TEXT_MODEL)
-        response = fallback.generate_content("Say 'Fallback ready!' in one sentence.")
-        results["fallback"] = {
-            "status": "success",
-            "model": FALLBACK_TEXT_MODEL,
-            "response": response.text if hasattr(response, 'text') else "Model ready"
-        }
-    except Exception as e:
-        results["fallback"] = {
-            "status": "error",
-            "model": FALLBACK_TEXT_MODEL,
-            "error": str(e)
-        }
-    
-    return results
 
 
 # Vercel serverless handler
