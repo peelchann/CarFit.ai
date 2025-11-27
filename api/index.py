@@ -308,8 +308,14 @@ async def generate_image(request: GenerateRequest):
         )
     
     try:
-        # Initialize the Nano Banana Pro model for image generation
-        model = genai.GenerativeModel(NANO_BANANA_PRO_MODEL)
+        # Initialize the model with image generation config
+        # Using Gemini 2.0 Flash with image output capability
+        model = genai.GenerativeModel(
+            model_name="gemini-2.0-flash-exp",
+            generation_config=genai.GenerationConfig(
+                response_mime_type="image/png"  # Request image output
+            )
+        )
         
         # Generate the installation prompt
         prompt = get_installation_prompt(
@@ -338,14 +344,12 @@ async def generate_image(request: GenerateRequest):
             "data": part_image_data
         }
         
-        # Call Nano Banana Pro with both images and the prompt
-        # Image 1 = car, Image 2 = part, Prompt = installation instructions
+        # Call the model with both images and the prompt
+        # Request: Take Image 1 (car) and Image 2 (part), generate car with part installed
         response = model.generate_content([
-            "Image 1 (User's Car):",
+            f"Based on these two images, generate a new photorealistic image. {prompt}",
             car_image_part,
-            "Image 2 (Part to Install):",
-            part_image_part,
-            prompt
+            part_image_part
         ])
         
         # Check if response contains generated image
