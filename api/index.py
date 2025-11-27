@@ -2,16 +2,10 @@
 CarFit Studio - API Backend (VroomRoom)
 =======================================
 
-AI-powered car customization using Gemini Image Generation (Nano Banana).
+AI-powered car customization using Gemini 3 Pro Image (Nano Banana Pro).
 
-MODELS:
-- gemini-2.5-flash-image: Fast image generation (Nano Banana)
-- gemini-3-pro-image-preview: Advanced image generation (Nano Banana Pro)
-
-SDK: google-genai (NEW SDK, not google-generativeai)
-- Uses: from google import genai
-- Client: genai.Client()
-- Method: client.models.generate_content(model=..., contents=[...])
+MODEL: gemini-3-pro-image-preview
+SDK: google-genai (unified SDK for Google AI Studio and Vertex AI)
 
 ENDPOINTS:
 - GET  /api/health     - Health check
@@ -37,7 +31,7 @@ except ImportError:
     genai = None
     types = None
 
-app = FastAPI(title="CarFit API", version="0.6.0")
+app = FastAPI(title="CarFit API", version="0.7.0")
 
 # Allow CORS for frontend
 app.add_middleware(
@@ -48,19 +42,23 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Configure Gemini API
+# ============================================
+# ENVIRONMENT VARIABLES
+# ============================================
+
+# For Google AI Studio (simple API key auth)
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
+
+# For Vertex AI (project-based auth) - optional
+GOOGLE_CLOUD_PROJECT_ID = os.environ.get("GOOGLE_CLOUD_PROJECT_ID", "")
+GOOGLE_CLOUD_LOCATION = os.environ.get("GOOGLE_CLOUD_LOCATION", "us-central1")
 
 # ============================================
 # MODEL CONFIGURATION
 # ============================================
 
-# Image generation model - CORRECT MODEL ID from official docs
-# gemini-2.5-flash-image: Input=Images+text, Output=Images+text, Image generation=Supported
-IMAGE_MODEL = "gemini-2.5-flash-image"
-
-# Alternative: Nano Banana Pro (higher quality, slower)
-# IMAGE_MODEL = "gemini-3-pro-image-preview"
+# Gemini 3 Pro Image (Nano Banana Pro) - CORRECT MODEL ID
+IMAGE_MODEL = "gemini-3-pro-image-preview"
 
 # Fallback text model
 TEXT_MODEL = "gemini-2.0-flash-exp"
@@ -152,9 +150,7 @@ PART_OPTIONS: List[PartOption] = [
 # ============================================
 
 def get_car_customization_prompt(part_name: str, part_category: str, part_description: str) -> str:
-    """
-    Generate the prompt for image editing - blending part onto car.
-    """
+    """Generate the prompt for image editing - blending part onto car."""
     
     category_instructions = {
         'wheels': """
@@ -234,7 +230,7 @@ def detect_mime_type(base64_data: str) -> str:
 
 
 # ============================================
-# CORE: Generate car preview with Gemini
+# CORE: Generate car preview with Gemini 3 Pro Image
 # ============================================
 
 async def generate_car_preview(
@@ -243,19 +239,17 @@ async def generate_car_preview(
     prompt: str
 ) -> dict:
     """
-    Generate an edited car image using Gemini image generation.
+    Generate an edited car image using Gemini 3 Pro Image (gemini-3-pro-image-preview).
     
-    Uses the NEW google-genai SDK:
-    - from google import genai
-    - client = genai.Client()
-    - client.models.generate_content(model=..., contents=[...])
+    Uses the google-genai SDK with:
+    - For API Key auth: genai.Client(api_key=...)
+    - For Vertex AI: genai.Client(vertexai=True, project=..., location=...)
+    
+    Config includes response_modalities=['IMAGE'] for image generation.
     """
     
     if not GENAI_AVAILABLE:
         raise Exception("google-genai package not available. Install with: pip install google-genai")
-    
-    if not GEMINI_API_KEY:
-        raise Exception("GEMINI_API_KEY not configured")
     
     # Strip data URI prefix if present
     if base_car_image.startswith("data:"):
@@ -267,40 +261,59 @@ async def generate_car_preview(
     car_mime_type = detect_mime_type(base_car_image)
     part_mime_type = detect_mime_type(parts_image)
     
-    # Initialize the client with API key
-    client = genai.Client(api_key=GEMINI_API_KEY)
-    
-    # Build content parts with images
-    # Format: text prompt + inline images
-    contents = [
-        prompt,
-        types.Part.from_bytes(
-            data=base64.b64decode(base_car_image),
-            mime_type=car_mime_type
-        ),
-        types.Part.from_bytes(
-            data=base64.b64decode(parts_image),
-            mime_type=part_mime_type
+    # Initialize client based on available credentials
+    if GOOGLE_CLOUD_PROJECT_ID:
+        # Use Vertex AI (project-based auth)
+        client = genai.Client(
+            vertexai=True,
+            project=GOOGLE_CLOUD_PROJECT_ID,
+            location=GOOGLE_CLOUD_LOCATION
         )
+    elif GEMINI_API_KEY:
+        # Use Google AI Studio (API key auth)
+        client = genai.Client(api_key=GEMINI_API_KEY)
+    else:
+        raise Exception("No credentials configured. Set GEMINI_API_KEY or GOOGLE_CLOUD_PROJECT_ID")
+    
+    # Build content parts
+    contents = [
+        {
+            "role": "user",
+            "parts": [
+                {"text": prompt},
+                {
+                    "inline_data": {
+                        "mime_type": car_mime_type,
+                        "data": base_car_image
+                    }
+                },
+                {
+                    "inline_data": {
+                        "mime_type": part_mime_type,
+                        "data": parts_image
+                    }
+                }
+            ]
+        }
     ]
     
-    # Call the model
+    # Generate with response_modalities=['IMAGE'] for image output
     response = client.models.generate_content(
         model=IMAGE_MODEL,
-        contents=contents
+        contents=contents,
+        config={
+            "response_modalities": ["IMAGE"]
+        }
     )
     
-    # Process response - look for image in parts
-    for part in response.parts:
-        # Check for text response
-        if part.text is not None:
-            return {
-                "status": "text_response",
-                "message": part.text
-            }
-        
-        # Check for inline image data
-        if part.inline_data is not None:
+    # Extract the image from response
+    candidates = response.candidates
+    if not candidates or len(candidates) == 0:
+        raise Exception("No candidates returned from model")
+    
+    # Find the image part in the response
+    for part in candidates[0].content.parts:
+        if hasattr(part, 'inline_data') and part.inline_data:
             mime_type = part.inline_data.mime_type or "image/png"
             image_data = part.inline_data.data
             
@@ -314,8 +327,15 @@ async def generate_car_preview(
                 "status": "success",
                 "image_base64": f"data:{mime_type};base64,{image_b64}"
             }
+        
+        # Check for text response (fallback)
+        if hasattr(part, 'text') and part.text:
+            return {
+                "status": "text_response",
+                "message": part.text
+            }
     
-    raise Exception("Model did not return an image or text. Try a different prompt.")
+    raise Exception("No image data found in response")
 
 
 # ============================================
@@ -327,11 +347,13 @@ def health_check():
     return {
         "status": "ok",
         "service": "CarFit Backend (VroomRoom)",
-        "version": "0.6.0",
+        "version": "0.7.0",
         "image_model": IMAGE_MODEL,
         "text_model": TEXT_MODEL,
         "genai_available": GENAI_AVAILABLE,
-        "api_key_configured": bool(GEMINI_API_KEY)
+        "auth_mode": "vertex_ai" if GOOGLE_CLOUD_PROJECT_ID else ("api_key" if GEMINI_API_KEY else "none"),
+        "project_id": GOOGLE_CLOUD_PROJECT_ID[:10] + "..." if GOOGLE_CLOUD_PROJECT_ID else None,
+        "location": GOOGLE_CLOUD_LOCATION if GOOGLE_CLOUD_PROJECT_ID else None
     }
 
 
@@ -360,12 +382,10 @@ def get_parts_by_category(category_id: PartCategoryId):
 @app.post("/api/generate")
 async def generate_image(request: GenerateRequest):
     """
-    Generate a photorealistic car customization image.
+    Generate a photorealistic car customization image using Gemini 3 Pro Image.
     
-    Uses Gemini image generation with:
-    - Image 1: User's car photo (base64)
-    - Image 2: Part to install (base64)
-    - Text prompt: Blending instructions
+    Model: gemini-3-pro-image-preview (Nano Banana Pro)
+    Config: response_modalities=['IMAGE']
     
     Returns generated image as base64 or error message.
     """
@@ -376,11 +396,11 @@ async def generate_image(request: GenerateRequest):
             message="google-genai package not installed. Run: pip install google-genai"
         )
     
-    if not GEMINI_API_KEY:
+    if not GEMINI_API_KEY and not GOOGLE_CLOUD_PROJECT_ID:
         return GenerateResponse(
             status="demo",
             image_url="https://images.unsplash.com/photo-1544636331-e26879cd4d9b?w=800",
-            message="Demo mode: Configure GEMINI_API_KEY for real AI generation."
+            message="Demo mode: Configure GEMINI_API_KEY or GOOGLE_CLOUD_PROJECT_ID for real AI generation."
         )
     
     try:
@@ -391,7 +411,7 @@ async def generate_image(request: GenerateRequest):
             request.part_description
         )
         
-        # Call Gemini
+        # Call Gemini 3 Pro Image
         result = await generate_car_preview(
             base_car_image=request.car_image,
             parts_image=request.part_image,
@@ -413,7 +433,7 @@ async def generate_image(request: GenerateRequest):
         
     except Exception as e:
         error_msg = str(e)
-        print(f"Gemini error: {error_msg}")
+        print(f"Gemini 3 Pro Image error: {error_msg}")
         
         # Handle specific errors
         if "429" in error_msg or "quota" in error_msg.lower():
@@ -425,8 +445,14 @@ async def generate_image(request: GenerateRequest):
         if "404" in error_msg or "not found" in error_msg.lower():
             return GenerateResponse(
                 status="model_unavailable",
-                message=f"Model {IMAGE_MODEL} not available. Please check API access.",
+                message=f"Model {IMAGE_MODEL} not available. Check Vertex AI API access and region.",
                 image_url="https://images.unsplash.com/photo-1544636331-e26879cd4d9b?w=800"
+            )
+        
+        if "permission" in error_msg.lower() or "403" in error_msg:
+            return GenerateResponse(
+                status="permission_denied",
+                message="Permission denied. Ensure Vertex AI API is enabled and service account has 'Vertex AI User' role."
             )
         
         if "400" in error_msg:
@@ -447,23 +473,34 @@ async def test_gemini():
     if not GENAI_AVAILABLE:
         return {"error": "google-genai package not installed. Run: pip install google-genai"}
     
-    if not GEMINI_API_KEY:
-        return {"error": "GEMINI_API_KEY not configured"}
+    if not GEMINI_API_KEY and not GOOGLE_CLOUD_PROJECT_ID:
+        return {"error": "No credentials configured. Set GEMINI_API_KEY or GOOGLE_CLOUD_PROJECT_ID"}
     
     try:
-        client = genai.Client(api_key=GEMINI_API_KEY)
+        # Initialize client
+        if GOOGLE_CLOUD_PROJECT_ID:
+            client = genai.Client(
+                vertexai=True,
+                project=GOOGLE_CLOUD_PROJECT_ID,
+                location=GOOGLE_CLOUD_LOCATION
+            )
+            auth_mode = "vertex_ai"
+        else:
+            client = genai.Client(api_key=GEMINI_API_KEY)
+            auth_mode = "api_key"
         
-        # Test with a simple text prompt
+        # Test with text model first
         response = client.models.generate_content(
             model=TEXT_MODEL,
-            contents="Say 'Gemini is ready!' in one sentence."
+            contents=[{"role": "user", "parts": [{"text": "Say 'Gemini is ready!' in one sentence."}]}]
         )
         
         return {
             "status": "success",
+            "auth_mode": auth_mode,
             "image_model": IMAGE_MODEL,
             "text_model": TEXT_MODEL,
-            "test_response": response.text if hasattr(response, 'text') else str(response)
+            "test_response": response.candidates[0].content.parts[0].text if response.candidates else "No response"
         }
     except Exception as e:
         return {
