@@ -4,25 +4,24 @@ import { useState, useCallback } from "react";
 import { Header } from "@/components/Header";
 import { PartSelector } from "@/components/PartSelector";
 import { ImageStage } from "@/components/ImageStage";
-import { PartOption, PartCategoryId } from "@/lib/parts-data";
+import { PartOption } from "@/lib/parts-data";
 
 /**
  * CarFit Studio (VroomRoom) - Main Page
  * 
- * AI-powered car customization using Nano Banana Pro (gemini-3-pro-image-preview)
+ * AI-powered car customization using Nano Banana Pro
  * 
  * FLOW:
- * 1. User uploads their car photo (Image 1)
- * 2. User selects aftermarket parts from catalog (Image 2)
- * 3. AI generates photorealistic image of car with parts installed
+ * 1. User uploads their car photo
+ * 2. User selects ONE part from catalog
+ * 3. AI generates photorealistic image of car with part installed
  */
 
-// Use relative URLs for API calls (works in both dev and production)
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
 
 export default function Home() {
-  // Selected parts - one per category
-  const [selectedParts, setSelectedParts] = useState<Map<PartCategoryId, PartOption>>(new Map());
+  // Single part selection (only one at a time)
+  const [selectedPart, setSelectedPart] = useState<PartOption | null>(null);
   
   // Image states
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
@@ -31,19 +30,11 @@ export default function Home() {
   const [generationMessage, setGenerationMessage] = useState<string | null>(null);
 
   /**
-   * Handle part selection
+   * Handle part selection - only ONE part at a time
    */
   const handlePartSelect = useCallback((part: PartOption) => {
-    setSelectedParts(prev => {
-      const newMap = new Map(prev);
-      const currentPart = newMap.get(part.categoryId);
-      if (currentPart?.id === part.id) {
-        newMap.delete(part.categoryId);
-      } else {
-        newMap.set(part.categoryId, part);
-      }
-      return newMap;
-    });
+    // Toggle selection: if same part clicked, deselect; otherwise select new part
+    setSelectedPart(prev => prev?.id === part.id ? null : part);
   }, []);
 
   /**
@@ -67,13 +58,12 @@ export default function Home() {
 
   /**
    * Generate AI preview using Nano Banana Pro
-   * Sends both car image and part image to the API
    */
   const handleGenerate = useCallback(async () => {
-    if (!selectedImage || selectedParts.size === 0) return;
+    if (!selectedImage || !selectedPart) return;
     
     setIsGenerating(true);
-    setGenerationMessage(null);
+    setGenerationMessage("Preparing images...");
     
     try {
       // Convert car image to base64
@@ -84,11 +74,12 @@ export default function Home() {
         reader.readAsDataURL(selectedImage);
       });
 
-      // Get the first selected part (for now, generate one at a time)
-      const selectedPart = Array.from(selectedParts.values())[0];
+      setGenerationMessage("Fetching part image...");
       
       // Fetch the part image as base64
       const partImageBase64 = await fetchPartImageAsBase64(selectedPart.imagePath);
+
+      setGenerationMessage("Generating with AI...");
 
       // Call the Nano Banana Pro API
       const response = await fetch(`${API_BASE}/api/generate`, {
@@ -106,37 +97,34 @@ export default function Home() {
       });
       
       const data = await response.json();
+      console.log("API Response:", data);
       
       // Handle different response types
       if (data.status === "success" && data.image_base64) {
         // AI generated image successfully
         setResultImage(data.image_base64);
-        setGenerationMessage(data.message || "Generated successfully!");
+        setGenerationMessage("Generated successfully!");
       } else if (data.status === "demo" && data.image_url) {
         // Demo mode
         setResultImage(data.image_url);
-        setGenerationMessage(data.message || "Demo mode - configure API key for real generation");
+        setGenerationMessage("Demo mode - showing sample image");
       } else if (data.status === "rate_limited") {
-        // Rate limited
-        setGenerationMessage(data.message || "Rate limited. Please wait and try again.");
-        alert("Rate limited. Please wait a moment and try again.");
-      } else if (data.status === "text_response") {
-        // Model returned text instead of image
+        setGenerationMessage("Rate limited. Please wait and try again.");
+      } else if (data.status === "text_response" && data.message) {
+        // Model returned text - this shouldn't happen with image model
+        setGenerationMessage(`AI Response: ${data.message}`);
+      } else if (data.message) {
         setGenerationMessage(data.message);
-        console.log("AI Response:", data.message);
       } else {
-        // Other status
-        setGenerationMessage(data.message || "Generation completed");
-        console.log("API Response:", data);
+        setGenerationMessage("Generation completed - check console for details");
       }
     } catch (error) {
       console.error("Generation failed:", error);
-      setGenerationMessage("Failed to generate. Check console for details.");
-      alert("Failed to generate image. Check console for details.");
+      setGenerationMessage("Failed to generate. Please try again.");
     } finally {
       setIsGenerating(false);
     }
-  }, [selectedImage, selectedParts]);
+  }, [selectedImage, selectedPart]);
 
   /**
    * Clear all state and start over
@@ -144,7 +132,7 @@ export default function Home() {
   const handleClear = useCallback(() => {
     setSelectedImage(null);
     setResultImage(null);
-    setSelectedParts(new Map());
+    setSelectedPart(null);
     setGenerationMessage(null);
   }, []);
 
@@ -159,33 +147,20 @@ export default function Home() {
           <div className="lg:col-span-3 flex flex-col gap-6 lg:h-full lg:overflow-hidden">
             <div className="rounded-2xl border border-gray-800 bg-gray-900/50 p-6 backdrop-blur-sm lg:h-full flex flex-col">
               <PartSelector 
-                selectedParts={selectedParts}
+                selectedPart={selectedPart}
                 onSelect={handlePartSelect}
                 isLoading={false}
               />
               
-              {/* Selected Parts Summary */}
-              {selectedParts.size > 0 && (
+              {/* Selected Part Summary */}
+              {selectedPart && (
                 <div className="mt-4 pt-4 border-t border-gray-800">
                   <h3 className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">
-                    Your Build ({selectedParts.size} parts)
+                    Selected Part
                   </h3>
-                  <div className="space-y-1">
-                    {Array.from(selectedParts.values()).map(part => (
-                      <div 
-                        key={part.id}
-                        className="flex items-center justify-between text-sm"
-                      >
-                        <span className="text-gray-300 truncate">{part.name}</span>
-                        <span className="text-blue-400 font-medium">${part.price}</span>
-                      </div>
-                    ))}
-                    <div className="flex items-center justify-between text-sm pt-2 border-t border-gray-800 mt-2">
-                      <span className="text-white font-medium">Total</span>
-                      <span className="text-blue-400 font-bold">
-                        ${Array.from(selectedParts.values()).reduce((sum, p) => sum + p.price, 0)}
-                      </span>
-                    </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-300 truncate">{selectedPart.name}</span>
+                    <span className="text-blue-400 font-bold">${selectedPart.price}</span>
                   </div>
                 </div>
               )}
@@ -197,13 +172,13 @@ export default function Home() {
             <div className="flex-1 rounded-2xl bg-gray-900/20 border border-gray-800/50 p-4 lg:p-8 backdrop-blur-sm">
               <ImageStage
                 selectedImage={selectedImage}
-                selectedParts={selectedParts}
+                selectedPart={selectedPart}
                 resultImage={resultImage}
                 isGenerating={isGenerating}
                 onImageSelected={setSelectedImage}
                 onClear={handleClear}
                 onGenerate={handleGenerate}
-                canGenerate={!!selectedImage && selectedParts.size > 0}
+                canGenerate={!!selectedImage && !!selectedPart}
               />
             </div>
             

@@ -10,8 +10,8 @@ import {
 } from "@/lib/parts-data";
 
 interface PartSelectorProps {
-  /** Map of selected parts (one per category) */
-  selectedParts: Map<PartCategoryId, PartOption>;
+  /** Currently selected part (only one) */
+  selectedPart: PartOption | null;
   /** Callback when a part is selected/deselected */
   onSelect: (part: PartOption) => void;
   /** Loading state */
@@ -21,23 +21,16 @@ interface PartSelectorProps {
 /**
  * PartSelector Component
  * 
- * Displays category tabs and part options grid.
- * Uses hardcoded data from /lib/parts-data.ts
- * 
- * TO ADD NEW PARTS:
- * - Edit /lib/parts-data.ts
- * - Add PNG to /public/parts/{category}/
+ * Displays category tabs and part options.
+ * Only ONE part can be selected at a time.
  */
-export function PartSelector({ selectedParts, onSelect, isLoading }: PartSelectorProps) {
+export function PartSelector({ selectedPart, onSelect, isLoading }: PartSelectorProps) {
   // Track which category tab is active
   const [activeCategory, setActiveCategory] = useState<PartCategoryId>('wheels');
   
   // Get parts for the active category
   const categoryParts = getPartsByCategory(activeCategory);
   const activeTab = PART_CATEGORIES.find(c => c.id === activeCategory);
-  
-  // Get selected part for current category (if any)
-  const selectedInCategory = selectedParts.get(activeCategory);
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -52,7 +45,8 @@ export function PartSelector({ selectedParts, onSelect, isLoading }: PartSelecto
       {/* Category Tabs */}
       <div className="flex gap-1 mb-4 p-1 bg-gray-900 rounded-lg flex-shrink-0">
         {PART_CATEGORIES.map((category) => {
-          const hasSelection = selectedParts.has(category.id);
+          // Check if selected part is in this category
+          const hasSelection = selectedPart?.categoryId === category.id;
           return (
             <button
               key={category.id}
@@ -90,7 +84,6 @@ export function PartSelector({ selectedParts, onSelect, isLoading }: PartSelecto
       ) : categoryParts.length === 0 ? (
         <div className="flex-1 flex flex-col items-center justify-center text-gray-500 text-sm border border-dashed border-gray-800 rounded-xl p-8">
           <p>No parts in this category.</p>
-          <p className="text-xs mt-2">Add PNGs to /public/parts/{activeCategory}/</p>
         </div>
       ) : (
         <div className="flex-1 overflow-y-auto pr-1 space-y-3 min-h-0">
@@ -98,7 +91,7 @@ export function PartSelector({ selectedParts, onSelect, isLoading }: PartSelecto
             <PartCard
               key={part.id}
               part={part}
-              isSelected={selectedInCategory?.id === part.id}
+              isSelected={selectedPart?.id === part.id}
               onSelect={() => onSelect(part)}
             />
           ))}
@@ -106,13 +99,13 @@ export function PartSelector({ selectedParts, onSelect, isLoading }: PartSelecto
       )}
 
       {/* Selected Part Info */}
-      {selectedInCategory && (
+      {selectedPart && (
         <div className="mt-4 pt-4 border-t border-gray-800 flex-shrink-0">
           <div className="flex items-start gap-3 p-3 rounded-lg bg-blue-500/10 border border-blue-500/30">
             <Info className="w-4 h-4 text-blue-400 mt-0.5 flex-shrink-0" />
             <div>
-              <p className="text-sm font-medium text-white">{selectedInCategory.name}</p>
-              <p className="text-xs text-gray-400 mt-0.5">{selectedInCategory.description}</p>
+              <p className="text-sm font-medium text-white">{selectedPart.name}</p>
+              <p className="text-xs text-gray-400 mt-0.5">{selectedPart.description}</p>
             </div>
           </div>
         </div>
@@ -145,14 +138,12 @@ function PartCard({ part, isSelected, onSelect }: PartCardProps) {
       {/* Thumbnail */}
       <div className="relative w-16 h-16 flex-shrink-0 overflow-hidden rounded-lg bg-gray-950">
         {imageError ? (
-          // Placeholder when image fails to load
           <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-tr from-gray-900 to-gray-800">
             <div className="w-8 h-8 rounded-full border-2 border-gray-700/50 flex items-center justify-center">
               <span className="text-lg">{getCategoryIcon(part.categoryId)}</span>
             </div>
           </div>
         ) : (
-          // Actual part image
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={part.imagePath}

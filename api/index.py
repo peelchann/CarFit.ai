@@ -53,7 +53,9 @@ if GEMINI_AVAILABLE and GEMINI_API_KEY:
 # ============================================
 
 # Nano Banana Pro - Google's image generation model
-NANO_BANANA_PRO_MODEL = "gemini-2.0-flash-exp-image-generation"  # Image generation model
+# Try different model names - the exact name may vary
+NANO_BANANA_PRO_MODEL = "gemini-2.0-flash-exp"  # Using flash for now, update when image gen available
+GEMINI_IMAGE_MODEL = "imagen-3.0-generate-001"  # Alternative image model
 GEMINI_TEXT_MODEL = "gemini-2.0-flash-exp"  # Fallback text model
 
 
