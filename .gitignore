@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.env
+.venv
+env/
+venv/
+venv.bak/
+
+# Node
+node_modules/
+.next/
+.DS_Store
+dist/
+build/
+
+# Vercel
+.vercel
+
+
+
