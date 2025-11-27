@@ -308,14 +308,11 @@ async def generate_image(request: GenerateRequest):
         )
     
     try:
-        # Initialize the model with image generation config
-        # Using Gemini 2.0 Flash with image output capability
-        model = genai.GenerativeModel(
-            model_name="gemini-2.0-flash-exp",
-            generation_config=genai.GenerationConfig(
-                response_mime_type="image/png"  # Request image output
-            )
-        )
+        # For now, use Gemini to analyze and describe the modification
+        # Then return a demo image since Gemini text models can't generate images
+        # TODO: Integrate Imagen API or Replicate for actual image generation
+        
+        model = genai.GenerativeModel("gemini-2.0-flash-exp")
         
         # Generate the installation prompt
         prompt = get_installation_prompt(
@@ -344,42 +341,38 @@ async def generate_image(request: GenerateRequest):
             "data": part_image_data
         }
         
-        # Call the model with both images and the prompt
-        # Request: Take Image 1 (car) and Image 2 (part), generate car with part installed
+        # Ask Gemini to analyze both images and describe the result
+        # Note: Gemini can understand images but cannot generate new ones
+        analysis_prompt = f"""
+        Analyze these two images:
+        - Image 1: A car photo uploaded by the user
+        - Image 2: A {request.part_name} ({request.part_description})
+        
+        Describe in 2-3 sentences how the car would look with this part installed.
+        Be specific about the car model you see and how the {request.part_category} modification would enhance it.
+        """
+        
         response = model.generate_content([
-            f"Based on these two images, generate a new photorealistic image. {prompt}",
+            analysis_prompt,
             car_image_part,
             part_image_part
         ])
         
-        # Check if response contains generated image
+        # Get the AI analysis text
+        ai_description = ""
         if response.candidates and len(response.candidates) > 0:
             candidate = response.candidates[0]
-            
-            # Check for image in response parts
             for part in candidate.content.parts:
-                if hasattr(part, 'inline_data') and part.inline_data:
-                    # Return the generated image as base64
-                    image_base64 = base64.b64encode(part.inline_data.data).decode('utf-8')
-                    mime_type = part.inline_data.mime_type or "image/png"
-                    
-                    return GenerateResponse(
-                        status="success",
-                        image_base64=f"data:{mime_type};base64,{image_base64}",
-                        message=f"Successfully generated {request.part_name} installation preview"
-                    )
-                
-                # If text response (model might describe what it would generate)
                 if hasattr(part, 'text') and part.text:
-                    return GenerateResponse(
-                        status="text_response",
-                        message=part.text
-                    )
+                    ai_description = part.text
+                    break
         
-        # Fallback if no image generated
+        # Return the analysis with a demo/placeholder image
+        # Note: For actual image generation, need to integrate Imagen or Replicate
         return GenerateResponse(
-            status="no_image",
-            message="Model did not generate an image. Try a different photo or part."
+            status="analysis",
+            image_url="https://images.unsplash.com/photo-1544636331-e26879cd4d9b?w=800",
+            message=f"AI Analysis: {ai_description}\n\n⚠️ Note: Image generation requires Imagen API. Currently showing placeholder."
         )
         
     except Exception as e:
