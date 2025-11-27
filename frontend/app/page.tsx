@@ -7,105 +7,135 @@ import { ImageStage } from "@/components/ImageStage";
 import { PartOption, PartCategoryId } from "@/lib/parts-data";
 
 /**
- * CarFit Studio - Main Page
+ * CarFit Studio (VroomRoom) - Main Page
  * 
- * This is the main application page that orchestrates:
- * - Part selection (via PartSelector)
- * - Image upload and overlay preview (via ImageStage)
- * - AI generation requests
+ * AI-powered car customization using Nano Banana Pro (gemini-3-pro-image-preview)
  * 
- * STATE MANAGEMENT:
- * - selectedParts: Map of categoryId -> PartOption (one part per category)
- * - selectedImage: The uploaded car photo
- * - resultImage: The AI-generated result
+ * FLOW:
+ * 1. User uploads their car photo (Image 1)
+ * 2. User selects aftermarket parts from catalog (Image 2)
+ * 3. AI generates photorealistic image of car with parts installed
  */
 
 // Use relative URLs for API calls (works in both dev and production)
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
 
 export default function Home() {
-  // Selected parts - one per category (Map ensures only one part per category)
+  // Selected parts - one per category
   const [selectedParts, setSelectedParts] = useState<Map<PartCategoryId, PartOption>>(new Map());
-  
   
   // Image states
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [resultImage, setResultImage] = useState<string | null>(null);
+  const [generationMessage, setGenerationMessage] = useState<string | null>(null);
 
   /**
    * Handle part selection
-   * - If part is already selected, deselect it
-   * - If different part in same category, replace it
-   * - If part in new category, add it
    */
   const handlePartSelect = useCallback((part: PartOption) => {
     setSelectedParts(prev => {
       const newMap = new Map(prev);
-      
-      // Check if this exact part is already selected
       const currentPart = newMap.get(part.categoryId);
       if (currentPart?.id === part.id) {
-        // Deselect if clicking the same part
         newMap.delete(part.categoryId);
       } else {
-        // Select new part (replaces any existing part in same category)
         newMap.set(part.categoryId, part);
       }
-      
       return newMap;
     });
   }, []);
 
   /**
-   * Generate AI preview
-   * Sends the car image and selected parts to the backend
+   * Fetch part image as base64
+   */
+  const fetchPartImageAsBase64 = async (imagePath: string): Promise<string> => {
+    try {
+      const response = await fetch(imagePath);
+      const blob = await response.blob();
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    } catch (error) {
+      console.error("Failed to fetch part image:", error);
+      throw error;
+    }
+  };
+
+  /**
+   * Generate AI preview using Nano Banana Pro
+   * Sends both car image and part image to the API
    */
   const handleGenerate = useCallback(async () => {
     if (!selectedImage || selectedParts.size === 0) return;
     
     setIsGenerating(true);
+    setGenerationMessage(null);
     
-    // Convert file to base64 data URI
-    const reader = new FileReader();
-    reader.onloadend = async () => {
-      const base64data = reader.result as string;
+    try {
+      // Convert car image to base64
+      const carImageBase64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(selectedImage);
+      });
+
+      // Get the first selected part (for now, generate one at a time)
+      const selectedPart = Array.from(selectedParts.values())[0];
       
-      // Build prompt from selected parts
-      const partsDescription = Array.from(selectedParts.values())
-        .map(part => `${part.name} (${part.description})`)
-        .join(", ");
+      // Fetch the part image as base64
+      const partImageBase64 = await fetchPartImageAsBase64(selectedPart.imagePath);
+
+      // Call the Nano Banana Pro API
+      const response = await fetch(`${API_BASE}/api/generate`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          car_image: carImageBase64,
+          part_image: partImageBase64,
+          part_name: selectedPart.name,
+          part_category: selectedPart.categoryId,
+          part_description: selectedPart.description,
+        }),
+      });
       
-      try {
-        const response = await fetch(`${API_BASE}/api/generate`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            image_url: base64data,
-            part_id: Array.from(selectedParts.values()).map(p => p.id).join(","),
-            prompt: `Car customization with: ${partsDescription}. Photorealistic, 8k, cinematic lighting, professional automotive photography.`,
-          }),
-        });
-        
-        const data = await response.json();
-        if (data.image_url) {
-          setResultImage(data.image_url);
-        } else if (data.message) {
-          // For demo mode or text responses
-          console.log("API Response:", data.message);
-          // Show a demo image for now
-          setResultImage("https://images.unsplash.com/photo-1544636331-e26879cd4d9b?w=800");
-        }
-      } catch (error) {
-        console.error("Generation failed:", error);
-        alert("Failed to generate image. Check console for details.");
-      } finally {
-        setIsGenerating(false);
+      const data = await response.json();
+      
+      // Handle different response types
+      if (data.status === "success" && data.image_base64) {
+        // AI generated image successfully
+        setResultImage(data.image_base64);
+        setGenerationMessage(data.message || "Generated successfully!");
+      } else if (data.status === "demo" && data.image_url) {
+        // Demo mode
+        setResultImage(data.image_url);
+        setGenerationMessage(data.message || "Demo mode - configure API key for real generation");
+      } else if (data.status === "rate_limited") {
+        // Rate limited
+        setGenerationMessage(data.message || "Rate limited. Please wait and try again.");
+        alert("Rate limited. Please wait a moment and try again.");
+      } else if (data.status === "text_response") {
+        // Model returned text instead of image
+        setGenerationMessage(data.message);
+        console.log("AI Response:", data.message);
+      } else {
+        // Other status
+        setGenerationMessage(data.message || "Generation completed");
+        console.log("API Response:", data);
       }
-    };
-    reader.readAsDataURL(selectedImage);
+    } catch (error) {
+      console.error("Generation failed:", error);
+      setGenerationMessage("Failed to generate. Check console for details.");
+      alert("Failed to generate image. Check console for details.");
+    } finally {
+      setIsGenerating(false);
+    }
   }, [selectedImage, selectedParts]);
 
   /**
@@ -115,6 +145,7 @@ export default function Home() {
     setSelectedImage(null);
     setResultImage(null);
     setSelectedParts(new Map());
+    setGenerationMessage(null);
   }, []);
 
   return (
@@ -176,10 +207,17 @@ export default function Home() {
               />
             </div>
             
+            {/* Generation Message */}
+            {generationMessage && (
+              <div className="mt-2 px-4 py-2 bg-gray-900/50 rounded-lg text-sm text-gray-400 text-center">
+                {generationMessage}
+              </div>
+            )}
+            
             {/* Footer */}
             <div className="mt-4 flex justify-between text-xs text-gray-600 px-2">
-              <p>CarFit Studio v0.2.0 (VroomRoom MVP)</p>
-              <p>Powered by Gemini AI & FastAPI</p>
+              <p>CarFit Studio v0.3.0 (VroomRoom)</p>
+              <p>Powered by Nano Banana Pro & FastAPI</p>
             </div>
           </div>
           
