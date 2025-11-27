@@ -34,7 +34,7 @@ app.add_middleware(
 )
 
 # Configure Gemini API if key is available
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "AIzaSyAp5Tjw7_qH8h_TzpPbEJaW9yhYNa0HpR0")
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 if GEMINI_AVAILABLE and GEMINI_API_KEY:
     genai.configure(api_key=GEMINI_API_KEY)
 
