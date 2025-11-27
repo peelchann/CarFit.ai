@@ -26,7 +26,7 @@ interface PartSelectorProps {
  */
 export function PartSelector({ selectedPart, onSelect, isLoading }: PartSelectorProps) {
   // Track which category tab is active
-  const [activeCategory, setActiveCategory] = useState<PartCategoryId>('wheels');
+  const [activeCategory, setActiveCategory] = useState<PartCategoryId>('wrap');
   
   // Get parts for the active category
   const categoryParts = getPartsByCategory(activeCategory);

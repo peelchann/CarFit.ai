@@ -17,7 +17,7 @@
  * Valid part category identifiers
  * Add new categories here as literal types
  */
-export type PartCategoryId = 'wheels' | 'roof' | 'body';
+export type PartCategoryId = 'wrap' | 'roof' | 'body';
 
 /**
  * Part category metadata
@@ -60,10 +60,10 @@ export interface OverlayAnchor {
  */
 export const PART_CATEGORIES: PartCategory[] = [
   {
-    id: 'wheels',
-    label: 'Wheels & Rims',
-    description: 'Change the design of your wheels.',
-    icon: '🛞',
+    id: 'wrap',
+    label: 'Car Wraps',
+    description: 'Transform your car with vinyl wraps.',
+    icon: '🎨',
   },
   {
     id: 'roof',
@@ -96,32 +96,32 @@ export const PART_CATEGORIES: PartCategory[] = [
  */
 export const PART_OPTIONS: PartOption[] = [
   // ==========================================
-  // WHEELS - 3 options
-  // PNG location: /public/parts/wheels/
+  // CAR WRAPS - 3 options
+  // PNG location: /public/parts/wrap/
   // ==========================================
   {
-    id: 'wheel_sport_black_01',
-    categoryId: 'wheels',
-    name: 'Sport Black Alloy',
-    description: 'Aggressive black multi-spoke sports wheel.',
-    imagePath: '/parts/wheels/wheel_sport_black_01.png',
-    price: 299,
+    id: 'wrap_matte_black_01',
+    categoryId: 'wrap',
+    name: 'Matte Black Wrap',
+    description: 'Sleek matte black finish for a stealthy look.',
+    imagePath: '/parts/wrap/wrap_matte_black_01.png',
+    price: 2499,
   },
   {
-    id: 'wheel_lux_silver_02',
-    categoryId: 'wheels',
-    name: 'Luxury Silver Multi-Spoke',
-    description: 'Clean silver multi-spoke design for a premium look.',
-    imagePath: '/parts/wheels/wheel_lux_silver_02.png',
-    price: 349,
+    id: 'wrap_satin_chrome_02',
+    categoryId: 'wrap',
+    name: 'Satin Chrome Silver',
+    description: 'Mirror-like satin chrome for head-turning style.',
+    imagePath: '/parts/wrap/wrap_satin_chrome_02.png',
+    price: 3499,
   },
   {
-    id: 'wheel_offroad_bronze_03',
-    categoryId: 'wheels',
-    name: 'Off-Road Bronze Deep Dish',
-    description: 'Chunky off-road wheel in bronze finish.',
-    imagePath: '/parts/wheels/wheel_offroad_bronze_03.png',
-    price: 399,
+    id: 'wrap_color_shift_03',
+    categoryId: 'wrap',
+    name: 'Color Shift Purple-Blue',
+    description: 'Chameleon wrap that shifts colors in the light.',
+    imagePath: '/parts/wrap/wrap_color_shift_03.png',
+    price: 3999,
   },
 
   // ==========================================
@@ -200,10 +200,10 @@ export const PART_OPTIONS: PartOption[] = [
  * based on your specific PNG assets and car photo angles.
  */
 export const OVERLAY_ANCHORS: Record<PartCategoryId, OverlayAnchor> = {
-  wheels: { 
+  wrap: { 
     x: 0.5,   // Center horizontally
-    y: 0.75,  // Lower portion of image (where wheels typically are)
-    scale: 0.3 
+    y: 0.5,   // Center (wrap covers whole car)
+    scale: 1.0  // Full size reference
   },
   roof: { 
     x: 0.5,   // Center horizontally
@@ -248,4 +248,3 @@ export function getCategoryById(categoryId: PartCategoryId): PartCategory | unde
 export function getOverlayAnchor(categoryId: PartCategoryId): OverlayAnchor {
   return OVERLAY_ANCHORS[categoryId];
 }
-

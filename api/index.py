@@ -68,7 +68,7 @@ TEXT_MODEL = "gemini-2.0-flash-exp"
 # DATA MODELS
 # ============================================
 
-PartCategoryId = Literal['wheels', 'roof', 'body']
+PartCategoryId = Literal['wrap', 'roof', 'body']
 
 class PartCategory(BaseModel):
     id: PartCategoryId
@@ -103,8 +103,8 @@ class GenerateResponse(BaseModel):
 # ============================================
 
 PART_CATEGORIES: List[PartCategory] = [
-    PartCategory(id='wheels', label='Wheels & Rims', 
-                 description='Change the design of your wheels.', icon='🛞'),
+    PartCategory(id='wrap', label='Car Wraps', 
+                 description='Transform your car with vinyl wraps.', icon='🎨'),
     PartCategory(id='roof', label='Roof Storage', 
                  description='Add roof boxes, racks, or baskets.', icon='📦'),
     PartCategory(id='body', label='Body Style Accent', 
@@ -112,16 +112,16 @@ PART_CATEGORIES: List[PartCategory] = [
 ]
 
 PART_OPTIONS: List[PartOption] = [
-    # WHEELS
-    PartOption(id='wheel_sport_black_01', categoryId='wheels', name='Sport Black Alloy',
-               description='Aggressive black multi-spoke sports wheel.',
-               imagePath='/parts/wheels/wheel_sport_black_01.png', price=299),
-    PartOption(id='wheel_lux_silver_02', categoryId='wheels', name='Luxury Silver Multi-Spoke',
-               description='Clean silver multi-spoke design for a premium look.',
-               imagePath='/parts/wheels/wheel_lux_silver_02.png', price=349),
-    PartOption(id='wheel_offroad_bronze_03', categoryId='wheels', name='Off-Road Bronze Deep Dish',
-               description='Chunky off-road wheel in bronze finish.',
-               imagePath='/parts/wheels/wheel_offroad_bronze_03.png', price=399),
+    # CAR WRAPS
+    PartOption(id='wrap_matte_black_01', categoryId='wrap', name='Matte Black Wrap',
+               description='Sleek matte black finish for a stealthy look.',
+               imagePath='/parts/wrap/wrap_matte_black_01.png', price=2499),
+    PartOption(id='wrap_satin_chrome_02', categoryId='wrap', name='Satin Chrome Silver',
+               description='Mirror-like satin chrome for head-turning style.',
+               imagePath='/parts/wrap/wrap_satin_chrome_02.png', price=3499),
+    PartOption(id='wrap_color_shift_03', categoryId='wrap', name='Color Shift Purple-Blue',
+               description='Chameleon wrap that shifts colors in the light.',
+               imagePath='/parts/wrap/wrap_color_shift_03.png', price=3999),
     # ROOF
     PartOption(id='roof_box_black_01', categoryId='roof', name='Matte Black Roof Box',
                description='Sleek roof box for extra storage.',
@@ -153,14 +153,14 @@ def get_car_customization_prompt(part_name: str, part_category: str, part_descri
     """Generate the prompt for image editing - blending part onto car."""
     
     category_instructions = {
-        'wheels': """
-WHEEL INSTALLATION TASK:
-- Replace ALL visible wheels on the car with the wheel design from Image 2
-- Maintain correct wheel size proportions relative to the car
-- Add realistic tire sidewalls around the new wheels
-- Match the wheel orientation and angle to the car's perspective
-- Apply realistic shadows under the wheels touching the ground
-- Ensure proper wheel well fitment
+        'wrap': """
+CAR WRAP APPLICATION TASK:
+- Apply the vinyl wrap color/finish from Image 2 to the ENTIRE car body
+- Cover all painted surfaces: hood, roof, doors, fenders, bumpers, trunk
+- Keep the windows, lights, grille, and trim unchanged
+- Maintain realistic reflections and highlights matching the wrap's finish (matte, satin, gloss, chrome)
+- Preserve the car's body lines, curves, and contours
+- The wrap should look professionally applied with no bubbles or seams visible
 """,
         'roof': """
 ROOF INSTALLATION TASK:
