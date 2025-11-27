@@ -1,10 +1,9 @@
 import os
-import base64
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from typing import Optional
-from mangum import Mangum
 
 # Try to import Google Generative AI (Gemini)
 try:
@@ -151,5 +150,5 @@ async def test_gemini():
     except Exception as e:
         return {"error": str(e)}
 
-# Vercel serverless handler
-handler = Mangum(app, lifespan="off")
+# Vercel handler - export the FastAPI app directly
+# Vercel's @vercel/python runtime handles FastAPI natively
