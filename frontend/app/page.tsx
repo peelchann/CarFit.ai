@@ -13,6 +13,9 @@ interface Part {
   price: number;
 }
 
+// Use relative URLs for API calls (works in both dev and production)
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
+
 export default function Home() {
   const [parts, setParts] = useState<Part[]>([]);
   const [isLoadingParts, setIsLoadingParts] = useState(true);
@@ -24,7 +27,7 @@ export default function Home() {
   // Fetch parts from backend
   useEffect(() => {
     setIsLoadingParts(true);
-    fetch("http://localhost:8001/api/parts")
+    fetch(`${API_BASE}/api/parts`)
       .then((res) => res.json())
       .then((data) => {
         if (data.parts) {
@@ -45,7 +48,7 @@ export default function Home() {
       const base64data = reader.result as string;
       
       try {
-        const response = await fetch("http://localhost:8001/api/generate", {
+        const response = await fetch(`${API_BASE}/api/generate`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -111,7 +114,7 @@ export default function Home() {
             {/* Quick status bar or footer info could go here */}
             <div className="mt-4 flex justify-between text-xs text-gray-600 px-2">
                <p>CarFit Studio v0.1.0 (MVP)</p>
-               <p>Powered by Replicate AI & FastAPI</p>
+               <p>Powered by Gemini AI & FastAPI</p>
             </div>
           </div>
           
