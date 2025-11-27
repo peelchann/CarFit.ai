@@ -1,12 +1,14 @@
 /**
- * CarFit Studio - Parts Data Model & Constants
+ * CarFit Studio - Layered Composite Parts Data
  * 
- * This file contains all the typed data models and hardcoded part options.
+ * This implements the "Paper Doll" pattern for product visualization.
+ * Multiple transparent PNG layers are stacked to create unique combinations.
  * 
- * TO SWAP ASSETS:
- * - Navigate to /public/parts/{category}/
- * - Replace the PNG files, keeping the SAME filenames
- * - The UI will automatically use your new images
+ * KEY CONCEPTS:
+ * - Base Layer: Always visible (the car chassis)
+ * - Exclusive Categories: Only ONE option can be selected (e.g., paint color)
+ * - Additive Categories: MULTIPLE options can be selected (e.g., accessories)
+ * - Z-Index: Controls layer stacking order (higher = on top)
  */
 
 // ============================================
@@ -14,208 +16,189 @@
 // ============================================
 
 /**
- * Valid part category identifiers
- * Add new categories here as literal types
+ * Selection type determines UI behavior:
+ * - 'exclusive': Radio button logic (select one, replaces previous)
+ * - 'additive': Checkbox logic (select many, toggles on/off)
+ */
+export type SelectionType = 'exclusive' | 'additive';
+
+/**
+ * Category IDs for type safety
  */
 export type PartCategoryId = 'wrap' | 'roof' | 'body';
 
 /**
- * Part category metadata
+ * Part category with selection behavior
  */
 export interface PartCategory {
   id: PartCategoryId;
   label: string;
   description: string;
-  icon: string; // Emoji or icon identifier
+  icon: string;
+  type: SelectionType; // 'exclusive' or 'additive'
 }
 
 /**
- * Individual part option within a category
+ * Individual part option with layer information
  */
 export interface PartOption {
   id: string;
   categoryId: PartCategoryId;
   name: string;
   description: string;
-  imagePath: string; // Relative path to PNG in /public/parts/...
-  price: number; // Price in USD for display
-}
-
-/**
- * Overlay anchor point configuration for positioning parts on the car image
- */
-export interface OverlayAnchor {
-  x: number;      // Normalized 0–1 across width (0 = left, 1 = right)
-  y: number;      // Normalized 0–1 across height (0 = top, 1 = bottom)
-  scale: number;  // Relative scaling factor for the PNG (1.0 = 100%)
+  price: number;
+  imagePath: string;      // Thumbnail for selection UI
+  layerImageUrl: string;  // Transparent PNG overlay for compositor
+  zIndex: number;         // Stacking order (higher = on top)
 }
 
 // ============================================
 // CONSTANTS - CATEGORIES
 // ============================================
 
-/**
- * Available part categories
- * Displayed as tabs/buttons in the UI
- */
 export const PART_CATEGORIES: PartCategory[] = [
   {
     id: 'wrap',
     label: 'Car Wraps',
-    description: 'Transform your car with vinyl wraps.',
+    description: 'Transform your car with vinyl wraps. Select ONE color.',
     icon: '🎨',
+    type: 'exclusive', // User picks ONE wrap color
   },
   {
     id: 'roof',
     label: 'Roof Storage',
-    description: 'Add roof boxes, racks, or baskets.',
+    description: 'Add roof accessories. Mix and match multiple items.',
     icon: '📦',
+    type: 'additive', // User can pick MULTIPLE roof accessories
   },
   {
     id: 'body',
     label: 'Body Style Accent',
-    description: 'Front lip, side skirts, or spoiler.',
+    description: 'Add body kit components. Combine multiple parts.',
     icon: '🏎️',
+    type: 'additive', // User can pick MULTIPLE body parts
   },
 ];
 
 // ============================================
-// CONSTANTS - PART OPTIONS
+// CONSTANTS - PART OPTIONS WITH LAYER DATA
 // ============================================
 
 /**
- * All available part options
+ * All available parts with layer information for the compositor.
  * 
- * TO ADD NEW PARTS:
- * 1. Add the PNG to /public/parts/{category}/
- * 2. Add a new entry here with the correct imagePath
- * 
- * TO REPLACE EXISTING PARTS:
- * - Just replace the PNG file at the imagePath location
- * - Keep the same filename
+ * Z-INDEX GUIDE:
+ * - 10-19: Base modifications (wrap/paint)
+ * - 20-29: Lower accessories (body kit)
+ * - 30-39: Mid accessories (roof rails)
+ * - 40-49: Upper accessories (roof box, basket)
  */
 export const PART_OPTIONS: PartOption[] = [
   // ==========================================
-  // CAR WRAPS - 3 options
-  // PNG location: /public/parts/wrap/
+  // CAR WRAPS - EXCLUSIVE (pick one)
+  // Z-Index: 10 (base layer modification)
   // ==========================================
   {
     id: 'wrap_matte_black_01',
     categoryId: 'wrap',
     name: 'Matte Black Wrap',
     description: 'Sleek matte black finish for a stealthy look.',
-    imagePath: '/parts/wrap/wrap_matte_black_01.png',
     price: 2499,
+    imagePath: '/parts/wrap/wrap_matte_black_01.png',
+    layerImageUrl: '/layers/wrap/matte-black.png',
+    zIndex: 10,
   },
   {
     id: 'wrap_satin_chrome_02',
     categoryId: 'wrap',
     name: 'Satin Chrome Silver',
     description: 'Mirror-like satin chrome for head-turning style.',
-    imagePath: '/parts/wrap/wrap_satin_chrome_02.png',
     price: 3499,
+    imagePath: '/parts/wrap/wrap_satin_chrome_02.png',
+    layerImageUrl: '/layers/wrap/satin-chrome.png',
+    zIndex: 10,
   },
   {
     id: 'wrap_color_shift_03',
     categoryId: 'wrap',
     name: 'Color Shift Purple-Blue',
     description: 'Chameleon wrap that shifts colors in the light.',
-    imagePath: '/parts/wrap/wrap_color_shift_03.png',
     price: 3999,
+    imagePath: '/parts/wrap/wrap_color_shift_03.png',
+    layerImageUrl: '/layers/wrap/color-shift.png',
+    zIndex: 10,
   },
 
   // ==========================================
-  // ROOF STORAGE - 3 options
-  // PNG location: /public/parts/roof/
+  // ROOF STORAGE - ADDITIVE (pick many)
+  // Z-Index: 30-45 (stacked on top)
   // ==========================================
-  {
-    id: 'roof_box_black_01',
-    categoryId: 'roof',
-    name: 'Matte Black Roof Box',
-    description: 'Sleek roof box for extra storage.',
-    imagePath: '/parts/roof/roof_box_black_01.png',
-    price: 449,
-  },
   {
     id: 'roof_rack_silver_02',
     categoryId: 'roof',
     name: 'Silver Roof Rack Rails',
     description: 'Low-profile roof rails for mounting gear.',
-    imagePath: '/parts/roof/roof_rack_silver_02.png',
     price: 199,
+    imagePath: '/parts/roof/roof_rack_silver_02.png',
+    layerImageUrl: '/layers/roof/rack-rails.png',
+    zIndex: 30, // Base for roof accessories
+  },
+  {
+    id: 'roof_box_black_01',
+    categoryId: 'roof',
+    name: 'Matte Black Roof Box',
+    description: 'Sleek roof box for extra storage.',
+    price: 449,
+    imagePath: '/parts/roof/roof_box_black_01.png',
+    layerImageUrl: '/layers/roof/box-black.png',
+    zIndex: 40, // On top of rails
   },
   {
     id: 'roof_basket_black_03',
     categoryId: 'roof',
     name: 'Black Roof Basket',
     description: 'Open basket for camping and outdoor trips.',
-    imagePath: '/parts/roof/roof_basket_black_03.png',
     price: 279,
+    imagePath: '/parts/roof/roof_basket_black_03.png',
+    layerImageUrl: '/layers/roof/basket-black.png',
+    zIndex: 45, // Alternative to box
   },
 
   // ==========================================
-  // BODY STYLE ACCENT - 3 options
-  // PNG location: /public/parts/body/
+  // BODY STYLE ACCENT - ADDITIVE (pick many)
+  // Z-Index: 20-25 (lower body parts)
   // ==========================================
   {
     id: 'body_frontlip_black_01',
     categoryId: 'body',
     name: 'Black Front Lip Spoiler',
     description: 'Low front lip to sharpen the front view.',
-    imagePath: '/parts/body/body_frontlip_black_01.png',
     price: 189,
+    imagePath: '/parts/body/body_frontlip_black_01.png',
+    layerImageUrl: '/layers/body/frontlip-black.png',
+    zIndex: 20,
   },
   {
     id: 'body_sideskirt_color_02',
     categoryId: 'body',
     name: 'Color-Matched Side Skirts',
     description: 'Side skirts that extend the body line.',
-    imagePath: '/parts/body/body_sideskirt_color_02.png',
     price: 249,
+    imagePath: '/parts/body/body_sideskirt_color_02.png',
+    layerImageUrl: '/layers/body/sideskirt.png',
+    zIndex: 21,
   },
   {
     id: 'body_spoiler_black_03',
     categoryId: 'body',
     name: 'Subtle Rear Roof Spoiler',
     description: 'Clean rear spoiler for a sportier silhouette.',
-    imagePath: '/parts/body/body_spoiler_black_03.png',
     price: 179,
+    imagePath: '/parts/body/body_spoiler_black_03.png',
+    layerImageUrl: '/layers/body/spoiler-black.png',
+    zIndex: 25,
   },
 ];
-
-// ============================================
-// OVERLAY ANCHOR CONFIGURATION
-// ============================================
-
-/**
- * Anchor points for positioning part overlays on the car image
- * 
- * These define WHERE each category's PNG will be placed on the canvas.
- * Adjust these values to fine-tune positioning:
- * - x: 0 = left edge, 0.5 = center, 1 = right edge
- * - y: 0 = top edge, 0.5 = center, 1 = bottom edge
- * - scale: 1.0 = 100% of original PNG size
- * 
- * NOTE: These are starting points. You'll likely need to adjust
- * based on your specific PNG assets and car photo angles.
- */
-export const OVERLAY_ANCHORS: Record<PartCategoryId, OverlayAnchor> = {
-  wrap: { 
-    x: 0.5,   // Center horizontally
-    y: 0.5,   // Center (wrap covers whole car)
-    scale: 1.0  // Full size reference
-  },
-  roof: { 
-    x: 0.5,   // Center horizontally
-    y: 0.15,  // Upper portion of image (roof area)
-    scale: 0.4 
-  },
-  body: { 
-    x: 0.5,   // Center horizontally
-    y: 0.55,  // Middle-lower portion (body line area)
-    scale: 0.5 
-  },
-};
 
 // ============================================
 // HELPER FUNCTIONS
@@ -243,8 +226,19 @@ export function getCategoryById(categoryId: PartCategoryId): PartCategory | unde
 }
 
 /**
- * Get overlay anchor for a category
+ * Check if a category uses exclusive selection
  */
-export function getOverlayAnchor(categoryId: PartCategoryId): OverlayAnchor {
-  return OVERLAY_ANCHORS[categoryId];
+export function isExclusiveCategory(categoryId: PartCategoryId): boolean {
+  const category = getCategoryById(categoryId);
+  return category?.type === 'exclusive';
+}
+
+/**
+ * Get all selected parts sorted by z-index for rendering
+ */
+export function getLayersSortedByZIndex(selectedIds: string[]): PartOption[] {
+  return selectedIds
+    .map(id => getPartById(id))
+    .filter((part): part is PartOption => part !== undefined)
+    .sort((a, b) => a.zIndex - b.zIndex);
 }
