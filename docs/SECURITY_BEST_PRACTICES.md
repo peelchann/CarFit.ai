@@ -24,7 +24,7 @@
 ### ❌ NEVER DO THIS
 ```python
 # WRONG - Hardcoded API key
-GEMINI_API_KEY = "AIzaSyAp5Tjw7_qH8h_TzpPbEJaW9yhYNa0HpR0"
+GEMINI_API_KEY = "************************************************"
 ```
 
 ### ✅ ALWAYS DO THIS
