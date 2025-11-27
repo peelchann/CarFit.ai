@@ -1,283 +1,287 @@
 # CarFit Studio - AI Image Generation Specification
 
 **Last Updated:** November 27, 2025  
-**Version:** 0.4.0  
-**AI Model:** Gemini 2.0 Flash (configurable to Gemini 2.0 Pro)
+**Version:** 0.8.0  
+**AI Model:** Gemini 3 Pro Image Preview (`gemini-3-pro-image-preview`)
 
 ---
 
-## Overview
+## Core Principle
 
-CarFit Studio uses AI to generate photorealistic images of cars with aftermarket parts installed. The user provides two images, and the AI outputs a single composite image showing the car with the part professionally installed.
+> **The user's uploaded car photo is the PRIMARY REFERENCE.**  
+> **The part selection image is only a STYLE/DETAIL REFERENCE.**
+
+The AI must generate an image that looks like the **original uploaded photo** with modifications applied - NOT a new image inspired by both inputs.
 
 ---
 
-## Input Images
+## Input/Output Definition
 
-### Image 1: User's Car Photo
-The base image uploaded by the user.
+### Inputs (2 Images)
 
-| Requirement | Description |
-|-------------|-------------|
-| **Format** | JPG, PNG |
-| **Content** | Clear photo of the user's car |
-| **Angle** | Side view, front 3/4, or rear 3/4 preferred |
-| **Quality** | High resolution recommended |
-| **Background** | Any (street, parking lot, studio) |
+| Image | Role | What AI Should Do |
+|-------|------|-------------------|
+| **Image 1** (User's Car) | **PRIMARY REFERENCE** | PRESERVE everything: angle, car identity, background, lighting |
+| **Image 2** (Part/Wrap) | **STYLE REFERENCE** | EXTRACT visual attributes: color, finish, texture, shape |
 
-**Example Input:**
+### Output (1 Image)
+
+A single photorealistic image that is **visually identical to Image 1** except for the specific modification applied using attributes extracted from Image 2.
+
 ```
-┌─────────────────────────────────────┐
-│                                     │
-│    [User's Suzuki Jimny photo]      │
-│                                     │
-│    - Green Suzuki Jimny             │
-│    - Side/front 3/4 angle           │
-│    - Outdoor background             │
-│    - Stock wheels visible           │
-│    - No roof accessories            │
-│                                     │
-└─────────────────────────────────────┘
-```
-
-### Image 2: Part to Install
-The aftermarket part selected from the catalog.
-
-| Requirement | Description |
-|-------------|-------------|
-| **Format** | PNG (with transparency preferred) |
-| **Content** | Clear product photo of the part |
-| **Background** | Transparent or clean background |
-| **Categories** | Wheels, Roof Storage, Body Accents |
-
-**Example Input:**
-```
-┌─────────────────────────────────────┐
-│                                     │
-│    [Silver Roof Rack Rails photo]   │
-│                                     │
-│    - Low-profile roof rails         │
-│    - Silver/aluminum finish         │
-│    - Clear product shot             │
-│                                     │
-└─────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                                                                 │
+│   INPUT 1 (Primary)     +    INPUT 2 (Reference)    =  OUTPUT  │
+│                                                                 │
+│   ┌─────────────────┐       ┌─────────────────┐    ┌─────────────────┐
+│   │                 │       │                 │    │                 │
+│   │  User's Car     │       │  Wrap Sample    │    │  Same Car       │
+│   │  (Honda Civic)  │   +   │  (Matte Black)  │ =  │  Same Angle     │
+│   │  Side View      │       │                 │    │  Same Background│
+│   │  Street BG      │       │                 │    │  + Matte Black  │
+│   │                 │       │                 │    │    Wrap Applied │
+│   └─────────────────┘       └─────────────────┘    └─────────────────┘
+│                                                                 │
+│   PRESERVE FROM IMG 1:      EXTRACT FROM IMG 2:    COMBINE:     │
+│   • Camera angle            • Color/hue            • Image 1 base│
+│   • Car make/model          • Finish type          • + Image 2   │
+│   • Background              • Texture              │   attributes │
+│   • Lighting                • Reflectivity         │              │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Output Image Requirements
+## Technical Requirements
 
-### The AI-generated output should be:
+### 1. Composition Preservation (CRITICAL)
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                                                             │
-│              [GENERATED OUTPUT IMAGE]                       │
-│                                                             │
-│    ┌───────────────────────────────────────────────────┐    │
-│    │                                                   │    │
-│    │     Same Suzuki Jimny from Image 1                │    │
-│    │     WITH Silver Roof Rails INSTALLED              │    │
-│    │                                                   │    │
-│    │     ✓ Same car color (green)                      │    │
-│    │     ✓ Same background                             │    │
-│    │     ✓ Same lighting/shadows                       │    │
-│    │     ✓ Roof rails look factory-installed           │    │
-│    │     ✓ Proper perspective matching                 │    │
-│    │     ✓ Realistic shadows on roof                   │    │
-│    │                                                   │    │
-│    └───────────────────────────────────────────────────┘    │
-│                                                             │
-└─────────────────────────────────────────────────────────────┘
-```
+The output image MUST have **identical composition** to Image 1:
 
----
+| Attribute | Requirement |
+|-----------|-------------|
+| Camera Angle | EXACT match (front 3/4, side, rear 3/4, etc.) |
+| Framing | EXACT match (same crop, same car position in frame) |
+| Perspective | EXACT match (same vanishing points, same distortion) |
+| Aspect Ratio | EXACT match to input |
 
-## Category-Specific Output Requirements
+### 2. Car Identity Preservation (CRITICAL)
 
-### 🛞 Wheels Category
+The car in the output MUST be **the same vehicle** as Image 1:
 
-**Input:** Car photo + Wheel design  
-**Output:** Car with ALL visible wheels replaced
+| Attribute | Requirement |
+|-----------|-------------|
+| Make & Model | EXACT match (Honda Civic stays Honda Civic) |
+| Body Shape | EXACT match (same proportions, lines, contours) |
+| Unmodified Parts | EXACT match (wheels, mirrors, lights, trim) |
+| Year/Generation | EXACT match (same headlight shape, grille design) |
 
-| Requirement | Details |
-|-------------|---------|
-| Replace ALL wheels | Every visible wheel must show the new design |
-| Maintain proportions | Wheel size should match original proportions |
-| Add tire sidewalls | Realistic tire rubber around the new wheel |
-| Match perspective | Wheel angle matches car's viewing angle |
-| Proper shadows | Shadow under wheel touching ground |
-| Wheel well fitment | Wheels sit naturally in fenders |
+### 3. Environment Preservation (CRITICAL)
 
-**Visual Example:**
-```
-BEFORE (Image 1)          AFTER (Output)
-┌──────────────────┐      ┌──────────────────┐
-│   🚗             │      │   🚗             │
-│  ○────────○      │  →   │  ●────────●      │
-│  Stock wheels    │      │  New sport wheels│
-│                  │      │  + realistic     │
-│                  │      │    shadows       │
-└──────────────────┘      └──────────────────┘
-```
+The background MUST match Image 1 **exactly**:
+
+| Attribute | Requirement |
+|-----------|-------------|
+| Location | Same (street, parking lot, studio, nature) |
+| Background Objects | Same (buildings, trees, other cars) |
+| Ground Surface | Same (asphalt, concrete, grass) |
+| Sky/Weather | Same (sunny, cloudy, time of day) |
+
+### 4. Lighting Integration
+
+| Aspect | Requirement |
+|--------|-------------|
+| Light Direction | Match existing shadows in Image 1 |
+| Shadow Casting | New parts cast shadows consistent with scene |
+| Reflections | Match existing reflection patterns |
+| Material Response | Matte = diffuse; Chrome = sharp reflections |
 
 ---
 
-### 📦 Roof Storage Category
+## Category-Specific Extraction & Application
 
-**Input:** Car photo + Roof accessory  
-**Output:** Car with roof accessory mounted
+### 🎨 Car Wraps
 
-| Requirement | Details |
-|-------------|---------|
-| Centered placement | Accessory centered on roof |
-| Follow roof curve | Part follows the roof's natural curvature |
-| Mounting hardware | Add realistic roof rails/crossbars if needed |
-| Proper scale | Accessory proportional to car size |
-| Shadow casting | Accessory casts shadow on roof surface |
-| Seamless integration | Looks professionally installed |
+**EXTRACT from Reference Image:**
+- Exact color/hue of the wrap material
+- Surface finish (matte, satin, gloss, chrome, metallic)
+- Texture characteristics (smooth, brushed, carbon fiber pattern)
+- Reflectivity and light behavior
 
-**Visual Example:**
-```
-BEFORE (Image 1)          AFTER (Output)
-┌──────────────────┐      ┌──────────────────┐
-│   ┌────────┐     │      │   ┌════════┐     │
-│   │  roof  │     │  →   │   │ROOF BOX│     │
-│   └────────┘     │      │   └════════┘     │
-│   🚗             │      │   🚗             │
-│                  │      │  + mounting bars │
-│                  │      │  + shadows       │
-└──────────────────┘      └──────────────────┘
-```
+**APPLY to Car:**
+- ALL painted body panels
+- Hood, roof, doors, fenders, quarter panels, trunk, bumpers
+- Follow every body line and contour
+- Wrap around edges naturally
+
+**PRESERVE Unchanged:**
+- Windows and glass (keep transparent)
+- All lights (headlights, taillights, indicators)
+- Grille, badges, emblems, trim
+- Wheels, tires, mirrors
+- Interior visible through windows
+
+**Lighting Notes:**
+- Match wrap reflections to existing light source direction
+- Matte finishes diffuse light broadly
+- Chrome/metallic finishes create sharp, mirror-like reflections
 
 ---
 
-### 🏎️ Body Style Accent Category
+### 📦 Roof Accessories
 
-**Input:** Car photo + Body part (lip, skirt, spoiler)  
-**Output:** Car with body modification integrated
+**EXTRACT from Reference Image:**
+- Exact shape and design of the accessory
+- Color and material finish
+- Mounting hardware style
+- Proportions relative to a car
 
-| Requirement | Details |
-|-------------|---------|
-| **Front Lip** | Attached to bottom edge of front bumper |
-| **Side Skirts** | Extended along lower door panels |
-| **Rear Spoiler** | Mounted on trunk lid or roof edge |
-| Color matching | Match car color OR keep black/carbon as shown |
-| Smooth transitions | No visible gaps or seams |
-| Realistic reflections | Part reflects environment like rest of car |
+**APPLY to Car:**
+- Mount on roof surface
+- Center horizontally
+- Position appropriately front-to-back
+- Scale to match car's actual roof size
 
-**Visual Example:**
-```
-BEFORE (Image 1)          AFTER (Output)
-┌──────────────────┐      ┌──────────────────┐
-│                  │      │                  │
-│   🚗             │  →   │   🚗             │
-│  ═══════════     │      │  ═══════════     │
-│  (bumper)        │      │  ▄▄▄▄▄▄▄▄▄▄▄     │
-│                  │      │  (front lip)     │
-└──────────────────┘      └──────────────────┘
-```
+**PRESERVE Unchanged:**
+- Entire car body, color, all features
+- All windows, lights, wheels
+- Background and environment
+
+**Lighting Notes:**
+- Cast realistic shadow onto roof surface
+- Shadow direction matches existing shadows in scene
+
+---
+
+### 🏎️ Body Kit Components
+
+**EXTRACT from Reference Image:**
+- Exact shape and design of component
+- Color (black, carbon fiber, or body-matched)
+- Material finish (glossy, matte, textured)
+- Edge profile and mounting style
+
+**APPLY to Car:**
+- **Front Lip:** Bottom edge of front bumper, follow curvature
+- **Side Skirts:** Along rocker panels between wheel arches
+- **Rear Spoiler:** Trunk lid trailing edge or rear roof edge
+- Scale to match car's body dimensions
+
+**PRESERVE Unchanged:**
+- Car body color (unless body-matched part)
+- All original surfaces not covered by part
+- All lights, grille, windows, wheels
+- Background and environment
+
+**Lighting Notes:**
+- Add subtle shadow underneath component
+- Match reflections to existing light sources
 
 ---
 
 ## Quality Checklist
 
-### ✅ The output image MUST have:
+### ✅ Output MUST Have:
 
-- [ ] **Same car** - Identical make, model, color as Image 1
-- [ ] **Same background** - No changes to environment
-- [ ] **Same lighting** - Light direction and intensity preserved
-- [ ] **Matched perspective** - Part follows car's camera angle
-- [ ] **Realistic shadows** - New shadows where part meets car
-- [ ] **Consistent reflections** - Part reflects same environment
-- [ ] **Seamless integration** - Looks factory-installed
-- [ ] **High resolution** - Matches input image quality
-- [ ] **Single image** - One output, not before/after
+- [ ] **Same camera angle** as uploaded photo
+- [ ] **Same car** (make, model, body shape)
+- [ ] **Same background** (location, objects, ground)
+- [ ] **Same lighting** (direction, intensity, color temperature)
+- [ ] **Realistic material physics** (proper reflections, shadows)
+- [ ] **Seamless integration** (no visible editing artifacts)
+- [ ] **Single image output** (no collages, no before/after)
 
-### ❌ The output image must NOT have:
+### ❌ Output Must NOT Have:
 
-- [ ] Different car color or model
+- [ ] Different car make or model
+- [ ] Different camera angle or perspective
 - [ ] Changed background or environment
 - [ ] Text, watermarks, or labels
-- [ ] Multiple images or collages
-- [ ] The part shown separately (must be installed)
-- [ ] Obvious photoshop artifacts
-- [ ] Mismatched lighting or shadows
-- [ ] Floating or poorly positioned parts
+- [ ] The part shown separately
+- [ ] Multiple images or comparisons
+- [ ] Visible compositing artifacts
+- [ ] Unnatural color boundaries
 
 ---
 
-## Example Prompt to AI
+## API Request Format
 
-```
-Generate a photorealistic image of this car with the Silver Roof Rack Rails installed.
-
-TASK: Blend the Silver Roof Rack Rails (Low-profile roof rails for mounting gear) 
-onto the car from Image 1, using Image 2 as reference for the part's appearance.
-
-Mount the roof accessory centered on the car's roof. Follow roof curvature, 
-add mounting hardware, apply proper shadows.
-
-REQUIREMENTS:
-- Keep the car's original color, make, model, and background EXACTLY as in Image 1
-- Match lighting, shadows, and reflections to the original photo
-- The part should look factory-installed, not photoshopped
-- Output a single high-quality photorealistic image
-- Do NOT add text, watermarks, or labels
+```json
+POST /api/generate
+{
+  "car_image": "data:image/jpeg;base64,...",    // PRIMARY REFERENCE
+  "part_image": "data:image/png;base64,...",    // STYLE REFERENCE
+  "part_name": "Matte Black Wrap",
+  "part_category": "wrap",
+  "part_description": "Sleek matte black finish for a stealthy look"
+}
 ```
 
----
+## API Response Format
 
-## Technical Response Format
-
-### Success Response (Image Generated):
+### Success (Image Generated):
 ```json
 {
   "status": "success",
   "image_base64": "data:image/png;base64,iVBORw0KGgo...",
-  "message": "Generated Silver Roof Rack Rails installation preview"
+  "message": "Successfully generated Matte Black Wrap installation preview"
 }
 ```
 
-### Text Response (Model Returns Description):
+### Text Response (Model Returned Description):
 ```json
 {
   "status": "text_response",
-  "message": "The Suzuki Jimny would look great with the silver roof rails mounted...",
-  "image_url": "https://placeholder-image.com/demo.jpg"
+  "message": "I've analyzed the images and here's how the wrap would look...",
+  "image_url": "https://placeholder.com/demo.jpg"
 }
 ```
+
+---
+
+## Prompt Engineering Strategy
+
+The prompt is structured to clearly establish the hierarchy:
+
+1. **Define Image Roles** - Explicitly state Image 1 is PRIMARY, Image 2 is REFERENCE
+2. **List Preservation Requirements** - Everything that must stay the same
+3. **List Extraction Targets** - What to pull from the reference image
+4. **List Application Rules** - Where and how to apply extracted attributes
+5. **Technical Constraints** - Composition, identity, environment requirements
+6. **Negative Instructions** - Explicit list of what NOT to do
+
+This structure helps the model understand that the task is **style transfer with spatial awareness**, not image compositing or generation from scratch.
 
 ---
 
 ## Model Configuration
 
-| Setting | Default | Alternative |
-|---------|---------|-------------|
-| **Model** | `gemini-2.0-flash-exp` | `gemini-2.0-pro` |
-| **Purpose** | Fast, cost-effective | Higher quality |
-| **Env Variable** | `GEMINI_IMAGE_MODEL` | - |
+| Setting | Value |
+|---------|-------|
+| Model ID | `gemini-3-pro-image-preview` |
+| Config | `response_modalities: ["IMAGE"]` |
+| Auth | Vertex AI (project/location) or API Key |
 
-To upgrade to Pro model, set in Vercel:
+### Environment Variables (Vercel):
+
+**For Vertex AI:**
 ```
-GEMINI_IMAGE_MODEL=gemini-2.0-pro
+GOOGLE_CLOUD_PROJECT_ID=your-project-id
+GOOGLE_CLOUD_LOCATION=us-central1
+```
+
+**For API Key:**
+```
+GEMINI_API_KEY=your-api-key
 ```
 
 ---
 
-## Future Improvements
+## Version History
 
-1. **Multiple Parts** - Support installing multiple parts in one generation
-2. **Angle Selection** - Let user specify which angle to generate
-3. **Color Matching** - AI matches part color to car automatically
-4. **Before/After Slider** - Interactive comparison view
-5. **HD Export** - Download high-resolution result
-
----
-
-## References
-
-- [Gemini API Documentation](https://ai.google.dev/docs)
-- [CarFit Product Vision](./CarFit_Product_Vision_and_MVP_Spec.md)
-- [Security Best Practices](./SECURITY_BEST_PRACTICES.md)
-
+| Version | Date | Changes |
+|---------|------|---------|
+| 0.8.0 | Nov 27, 2025 | Complete rewrite with PRIMARY/REFERENCE image hierarchy |
+| 0.7.0 | Nov 27, 2025 | Added Gemini 3 Pro Image support |
+| 0.5.0 | Nov 27, 2025 | Initial specification |

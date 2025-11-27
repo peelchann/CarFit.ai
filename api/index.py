@@ -146,67 +146,188 @@ PART_OPTIONS: List[PartOption] = [
 
 
 # ============================================
-# IMAGE GENERATION PROMPT
+# IMAGE GENERATION PROMPT - TECHNICAL SPECIFICATION
 # ============================================
+"""
+PROMPT ENGINEERING STRATEGY FOR GEMINI 3 PRO IMAGE
+===================================================
+
+KEY PRINCIPLE: The user's uploaded car photo (Image 1) is the PRIMARY REFERENCE.
+The part selection image (Image 2) is only a STYLE/DETAIL REFERENCE.
+
+OUTPUT REQUIREMENT:
+- The generated image MUST look like Image 1 (same angle, same car, same background)
+- Only the specified modification should be applied
+- The part image is used to EXTRACT visual attributes (color, finish, texture, style)
+- These attributes are then APPLIED to the appropriate area of the car
+
+TECHNICAL APPROACH:
+1. PRESERVE: Exact camera angle, perspective, composition from Image 1
+2. PRESERVE: Car make, model, body shape, all unmodified features from Image 1
+3. PRESERVE: Background, environment, lighting conditions from Image 1
+4. EXTRACT: Color, finish, texture, pattern, style details from Image 2
+5. APPLY: Extracted details to the relevant car surface/component
+6. BLEND: Ensure lighting, shadows, reflections match the scene
+
+This is NOT image compositing - it's style transfer with spatial awareness.
+"""
 
 def get_car_customization_prompt(part_name: str, part_category: str, part_description: str) -> str:
-    """Generate the prompt for image editing - blending part onto car."""
+    """
+    Generate a precise prompt for Gemini 3 Pro Image.
+    
+    The prompt clearly establishes:
+    - Image 1 = PRIMARY REFERENCE (angle, composition, car identity)
+    - Image 2 = STYLE REFERENCE (extract visual attributes only)
+    - Output = Image 1 with Image 2's attributes applied
+    """
     
     category_instructions = {
-        'wrap': """
-CAR WRAP APPLICATION TASK:
-- Apply the vinyl wrap color/finish from Image 2 to the ENTIRE car body
-- Cover all painted surfaces: hood, roof, doors, fenders, bumpers, trunk
-- Keep the windows, lights, grille, and trim unchanged
-- Maintain realistic reflections and highlights matching the wrap's finish (matte, satin, gloss, chrome)
-- Preserve the car's body lines, curves, and contours
-- The wrap should look professionally applied with no bubbles or seams visible
-""",
-        'roof': """
-ROOF INSTALLATION TASK:
-- Mount the roof accessory from Image 2 onto the car's roof
-- Position it centered on the roof, properly aligned with the car's body lines
-- Add realistic mounting hardware (roof rails, crossbars) if needed
-- Ensure the accessory follows the roof's curvature naturally
-- Apply proper shadows where the accessory meets the roof
-""",
-        'body': """
-BODY KIT INSTALLATION TASK:
-- Integrate the body styling part from Image 2 seamlessly onto the car
-- For front lips: attach to the bottom edge of the front bumper
-- For side skirts: extend along the lower door panels
-- For spoilers: mount on the rear trunk lid or roof edge
-- Match the part's color to the car OR keep it black/carbon fiber as shown
-- Ensure smooth transitions between the part and existing body panels
-"""
+        'wrap': {
+            'task': 'VINYL WRAP COLOR TRANSFER',
+            'extract_from_ref': [
+                'Exact color/hue of the wrap material',
+                'Surface finish type (matte, satin, gloss, chrome, metallic)',
+                'Texture characteristics (smooth, brushed, carbon fiber pattern)',
+                'Reflectivity and light behavior',
+            ],
+            'apply_to_car': [
+                'ALL painted body panels: hood, roof, doors, fenders, quarter panels, trunk lid, bumpers',
+                'Follow every body line, crease, and contour of the original car',
+                'Wrap around edges naturally as real vinyl would',
+            ],
+            'preserve_unchanged': [
+                'Windows and glass (keep transparent)',
+                'Headlights, taillights, all lighting',
+                'Grille, badges, emblems, trim pieces',
+                'Wheels, tires, mirrors',
+                'Interior visible through windows',
+            ],
+            'lighting_notes': 'Match wrap reflections to the existing light source direction in Image 1. Matte finishes diffuse light; chrome finishes create sharp reflections.',
+        },
+        'roof': {
+            'task': 'ROOF ACCESSORY INSTALLATION',
+            'extract_from_ref': [
+                'Exact shape and design of the roof accessory',
+                'Color and material finish',
+                'Mounting hardware style',
+                'Proportions and dimensions relative to a car',
+            ],
+            'apply_to_car': [
+                'Mount on the roof surface of the car in Image 1',
+                'Center horizontally on the roof',
+                'Position appropriately front-to-back based on accessory type',
+                'Scale to match the car\'s actual roof size',
+            ],
+            'preserve_unchanged': [
+                'Entire car body, color, and all features',
+                'All windows, lights, wheels, everything',
+                'Background and environment',
+            ],
+            'lighting_notes': 'Cast realistic shadow from the accessory onto the roof surface. Match the shadow direction to existing shadows in Image 1.',
+        },
+        'body': {
+            'task': 'BODY KIT COMPONENT INSTALLATION',
+            'extract_from_ref': [
+                'Exact shape and design of the body component',
+                'Color (usually black, carbon fiber, or body-matched)',
+                'Material finish (glossy, matte, textured)',
+                'Mounting style and edge profile',
+            ],
+            'apply_to_car': [
+                'FRONT LIP: Attach to bottom edge of front bumper, follow bumper curvature',
+                'SIDE SKIRTS: Mount along rocker panel between wheel arches, follow body line',
+                'REAR SPOILER: Mount on trunk lid trailing edge or rear roof edge',
+                'Scale component to match the car\'s actual body dimensions',
+            ],
+            'preserve_unchanged': [
+                'Car body color and all original surfaces not covered by the part',
+                'All lights, grille, windows, wheels',
+                'Background and environment',
+            ],
+            'lighting_notes': 'Add subtle shadow underneath the component where it meets the car body. Match reflections to existing light sources.',
+        },
     }
     
-    instruction = category_instructions.get(part_category, category_instructions['body'])
+    spec = category_instructions.get(part_category, category_instructions['body'])
     
-    return f"""You are an expert car customization photo editor.
+    # Build the structured prompt
+    extract_list = '\n'.join([f'   • {item}' for item in spec['extract_from_ref']])
+    apply_list = '\n'.join([f'   • {item}' for item in spec['apply_to_car']])
+    preserve_list = '\n'.join([f'   • {item}' for item in spec['preserve_unchanged']])
+    
+    return f"""You are a professional automotive photo editor specializing in realistic car customization visualization.
 
-I'm providing two images:
-- Image 1: A photo of a car (the base vehicle)
-- Image 2: An aftermarket part ({part_name} - {part_description})
+## INPUT IMAGES
 
-YOUR TASK: Create a single photorealistic image showing the car from Image 1 with the {part_name} from Image 2 professionally installed.
+**IMAGE 1 (PRIMARY REFERENCE - The User's Car Photo):**
+This is the MASTER image. Your output MUST preserve:
+- Exact camera angle and perspective
+- Exact car make, model, and body shape
+- Exact background and environment
+- Exact lighting conditions and time of day
+- ALL features not being modified
 
-{instruction}
+**IMAGE 2 (STYLE REFERENCE - The {part_name}):**
+This is ONLY a reference for visual attributes. Extract:
+{extract_list}
 
-CRITICAL REQUIREMENTS:
-1. Keep the car's make, model, color, and all features EXACTLY as in Image 1
-2. Keep the original background and environment unchanged
-3. Match lighting, shadows, and reflections to the original photo
-4. The installed part should look factory-installed, not photoshopped
-5. Output a single high-resolution photorealistic image
+---
 
-DO NOT:
-- Change the car's color, shape, or any features
-- Add text, watermarks, or labels
-- Show the part separately - it must be installed on the car
-- Create multiple images or before/after comparisons
+## YOUR TASK: {spec['task']}
 
-Generate the final customized car image now."""
+**What to Extract from Image 2:**
+{extract_list}
+
+**Where to Apply on the Car (Image 1):**
+{apply_list}
+
+**What MUST Remain Unchanged:**
+{preserve_list}
+
+---
+
+## TECHNICAL REQUIREMENTS
+
+1. **OUTPUT COMPOSITION**: The generated image must have the IDENTICAL composition to Image 1:
+   - Same camera angle (front 3/4, side profile, rear 3/4, etc.)
+   - Same framing and crop
+   - Same car position in frame
+
+2. **CAR IDENTITY**: The car in the output must be EXACTLY the same vehicle as Image 1:
+   - Same make and model (e.g., if it's a Honda Civic, output must be a Honda Civic)
+   - Same body shape, proportions, and design details
+   - Same wheels, mirrors, and all unmodified components
+
+3. **ENVIRONMENT**: Background must match Image 1 EXACTLY:
+   - Same location (street, parking lot, studio, etc.)
+   - Same background elements
+   - Same ground/surface
+
+4. **LIGHTING INTEGRATION**: {spec['lighting_notes']}
+
+5. **PHOTOREALISM**: The modification must look like a real photograph, not a render or composite:
+   - No visible editing artifacts
+   - No unnatural color boundaries
+   - Proper material physics (reflections, shadows, highlights)
+
+---
+
+## OUTPUT SPECIFICATION
+
+Generate a SINGLE photorealistic image that looks like a professional photograph of the car from Image 1, but with the {part_name} ({part_description}) applied/installed.
+
+The viewer should believe this is an actual photo of this specific car with this modification - not a digital mockup.
+
+**DO NOT:**
+- Change the car to a different make/model
+- Change the camera angle or perspective
+- Change the background or environment
+- Add any text, watermarks, or labels
+- Show the part separately from the car
+- Create multiple images or comparisons
+
+**GENERATE THE FINAL IMAGE NOW.**"""
 
 
 # ============================================
