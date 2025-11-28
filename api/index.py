@@ -256,78 +256,58 @@ def get_car_customization_prompt(part_name: str, part_category: str, part_descri
     apply_list = '\n'.join([f'   • {item}' for item in spec['apply_to_car']])
     preserve_list = '\n'.join([f'   • {item}' for item in spec['preserve_unchanged']])
     
-    return f"""You are a professional automotive photo editor specializing in realistic car customization visualization.
+    return f"""You are a professional automotive photo editor. Your job is to modify a customer's car photo.
 
-## INPUT IMAGES
+## CRITICAL: UNDERSTAND THE TWO IMAGES
 
-**IMAGE 1 (PRIMARY REFERENCE - The User's Car Photo):**
-This is the MASTER image. Your output MUST preserve:
-- Exact camera angle and perspective
-- Exact car make, model, and body shape
-- Exact background and environment
-- Exact lighting conditions and time of day
-- ALL features not being modified
+**IMAGE 1 = THE CUSTOMER'S CAR PHOTO**
+- This is the photo you are EDITING
+- The output MUST show THIS EXACT CAR from THIS EXACT ANGLE
+- Keep: camera angle, background, lighting, car make/model, wheels, windows, everything except the modification
 
-**IMAGE 2 (STYLE REFERENCE - The {part_name}):**
-This is ONLY a reference for visual attributes. Extract:
-{extract_list}
-
----
+**IMAGE 2 = REFERENCE FOR THE MODIFICATION ({part_name})**
+- This is NOT the car to output
+- ONLY extract the visual style/color/texture from this image
+- Apply those visual attributes TO the car in Image 1
 
 ## YOUR TASK: {spec['task']}
 
-**What to Extract from Image 2:**
+**From Image 2, extract ONLY these visual attributes:**
 {extract_list}
 
-**Where to Apply on the Car (Image 1):**
+**Apply those attributes to the car in Image 1:**
 {apply_list}
 
-**What MUST Remain Unchanged:**
+**Keep these parts of Image 1 UNCHANGED:**
 {preserve_list}
 
----
+## OUTPUT REQUIREMENTS
 
-## TECHNICAL REQUIREMENTS
+Your output image must be:
+1. **THE SAME CAR as Image 1** - same make, model, body shape, wheels
+2. **THE SAME ANGLE as Image 1** - same camera position, framing, perspective
+3. **THE SAME BACKGROUND as Image 1** - same location, environment, ground
+4. **THE SAME LIGHTING as Image 1** - same shadows, highlights, time of day
 
-1. **OUTPUT COMPOSITION**: The generated image must have the IDENTICAL composition to Image 1:
-   - Same camera angle (front 3/4, side profile, rear 3/4, etc.)
-   - Same framing and crop
-   - Same car position in frame
+The ONLY change should be applying the {part_name} visual attributes from Image 2.
 
-2. **CAR IDENTITY**: The car in the output must be EXACTLY the same vehicle as Image 1:
-   - Same make and model (e.g., if it's a Honda Civic, output must be a Honda Civic)
-   - Same body shape, proportions, and design details
-   - Same wheels, mirrors, and all unmodified components
+{spec['lighting_notes']}
 
-3. **ENVIRONMENT**: Background must match Image 1 EXACTLY:
-   - Same location (street, parking lot, studio, etc.)
-   - Same background elements
-   - Same ground/surface
+## WHAT NOT TO DO
 
-4. **LIGHTING INTEGRATION**: {spec['lighting_notes']}
+❌ Do NOT output the car from Image 2
+❌ Do NOT change the camera angle
+❌ Do NOT change the background
+❌ Do NOT show Image 2's car
+❌ Do NOT create a collage or comparison
+❌ Do NOT add text or watermarks
 
-5. **PHOTOREALISM**: The modification must look like a real photograph, not a render or composite:
-   - No visible editing artifacts
-   - No unnatural color boundaries
-   - Proper material physics (reflections, shadows, highlights)
+## SUMMARY
 
----
+INPUT: Image 1 (customer's car) + Image 2 (style reference)
+OUTPUT: Image 1's car with Image 2's {part_name} attributes applied
 
-## OUTPUT SPECIFICATION
-
-Generate a SINGLE photorealistic image that looks like a professional photograph of the car from Image 1, but with the {part_name} ({part_description}) applied/installed.
-
-The viewer should believe this is an actual photo of this specific car with this modification - not a digital mockup.
-
-**DO NOT:**
-- Change the car to a different make/model
-- Change the camera angle or perspective
-- Change the background or environment
-- Add any text, watermarks, or labels
-- Show the part separately from the car
-- Create multiple images or comparisons
-
-**GENERATE THE FINAL IMAGE NOW.**"""
+Generate the modified photo of the customer's car now."""
 
 
 # ============================================
@@ -396,24 +376,28 @@ async def generate_car_preview(
     else:
         raise Exception("No credentials configured. Set GEMINI_API_KEY or GOOGLE_CLOUD_PROJECT_ID")
     
-    # Build content parts
+    # Build content parts with explicit image labels
+    # IMPORTANT: We label each image explicitly so Gemini knows which is which
     contents = [
         {
             "role": "user",
             "parts": [
                 {"text": prompt},
+                {"text": "\n\n=== IMAGE 1: THE USER'S CAR (PRIMARY REFERENCE - PRESERVE THIS EXACTLY) ==="},
                 {
                     "inline_data": {
                         "mime_type": car_mime_type,
                         "data": base_car_image
                     }
                 },
+                {"text": "\n\n=== IMAGE 2: THE PART TO APPLY (STYLE REFERENCE ONLY - EXTRACT ATTRIBUTES FROM THIS) ==="},
                 {
                     "inline_data": {
                         "mime_type": part_mime_type,
                         "data": parts_image
                     }
-                }
+                },
+                {"text": "\n\nNow generate a photorealistic image of the car from IMAGE 1 with the visual attributes from IMAGE 2 applied. The output must look like IMAGE 1's car, NOT IMAGE 2."}
             ]
         }
     ]
