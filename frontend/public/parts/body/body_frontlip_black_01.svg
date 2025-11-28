@@ -1,6 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="200" height="150" viewBox="0 0 200 150">
-  <rect width="200" height="150" fill="#f3f4f6"/>
-  <path d="M20 90 Q100 70 180 90 L180 100 Q100 85 20 100 Z" fill="#1f2937"/>
-  <text x="100" y="120" text-anchor="middle" fill="#666" font-family="system-ui" font-size="11" dy=".3em">Front Lip</text>
-</svg>
-

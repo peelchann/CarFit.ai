@@ -146,162 +146,102 @@ PART_OPTIONS: List[PartOption] = [
 
 
 # ============================================
-# IMAGE GENERATION PROMPT - TECHNICAL SPECIFICATION
+# IMAGE GENERATION PROMPT - GEMINI 3 PRO (NANO BANANA PRO)
 # ============================================
 """
-PROMPT ENGINEERING STRATEGY FOR GEMINI 3 PRO IMAGE
-===================================================
+PROMPT ENGINEERING FOR CAR CUSTOMIZATION
+========================================
 
-KEY PRINCIPLE: The user's uploaded car photo (Image 1) is the PRIMARY REFERENCE.
-The part selection image (Image 2) is only a STYLE/DETAIL REFERENCE.
+CORE PRINCIPLE: 
+- Image 1 (user's car) = SACRED - never change angle, position, size, background
+- Image 2 (part reference) = STYLE ONLY - extract appearance, ignore everything else
 
-OUTPUT REQUIREMENT:
-- The generated image MUST look like Image 1 (same angle, same car, same background)
-- Only the specified modification should be applied
-- The part image is used to EXTRACT visual attributes (color, finish, texture, style)
-- These attributes are then APPLIED to the appropriate area of the car
-
-TECHNICAL APPROACH:
-1. PRESERVE: Exact camera angle, perspective, composition from Image 1
-2. PRESERVE: Car make, model, body shape, all unmodified features from Image 1
-3. PRESERVE: Background, environment, lighting conditions from Image 1
-4. EXTRACT: Color, finish, texture, pattern, style details from Image 2
-5. APPLY: Extracted details to the relevant car surface/component
-6. BLEND: Ensure lighting, shadows, reflections match the scene
-
-This is NOT image compositing - it's style transfer with spatial awareness.
+The AI must generate a photo that looks like Image 1 was edited, NOT like Image 2.
 """
 
-def get_car_customization_prompt(part_name: str, part_category: str, part_description: str) -> str:
+def get_car_customization_prompt(part_name: str, part_category: str, ai_prompt_description: str) -> str:
     """
-    Generate a precise prompt for Gemini 3 Pro Image.
+    Generate a precise prompt for Gemini 3 Pro Image (Nano Banana Pro).
     
-    The prompt clearly establishes:
-    - Image 1 = PRIMARY REFERENCE (angle, composition, car identity)
-    - Image 2 = STYLE REFERENCE (extract visual attributes only)
-    - Output = Image 1 with Image 2's attributes applied
+    Args:
+        part_name: Display name of the part (e.g., "Urban Camo")
+        part_category: Category ID ('wrap', 'roof', 'body')
+        ai_prompt_description: Detailed AI description (e.g., "wrapped in geometric camouflage...")
+    
+    The prompt uses the ai_prompt_description to tell Gemini exactly what modification to apply.
     """
     
+    # Category-specific installation instructions
     category_instructions = {
         'wrap': {
-            'task': 'VINYL WRAP COLOR TRANSFER',
-            'extract_from_ref': [
-                'Exact color/hue of the wrap material',
-                'Surface finish type (matte, satin, gloss, chrome, metallic)',
-                'Texture characteristics (smooth, brushed, carbon fiber pattern)',
-                'Reflectivity and light behavior',
-            ],
-            'apply_to_car': [
-                'ALL painted body panels: hood, roof, doors, fenders, quarter panels, trunk lid, bumpers',
-                'Follow every body line, crease, and contour of the original car',
-                'Wrap around edges naturally as real vinyl would',
-            ],
-            'preserve_unchanged': [
-                'Windows and glass (keep transparent)',
-                'Headlights, taillights, all lighting',
-                'Grille, badges, emblems, trim pieces',
-                'Wheels, tires, mirrors',
-                'Interior visible through windows',
-            ],
-            'lighting_notes': 'Match wrap reflections to the existing light source direction in Image 1. Matte finishes diffuse light; chrome finishes create sharp reflections.',
+            'task': 'Apply the vinyl wrap design to the car body',
+            'where_to_apply': 'Cover ALL painted body panels: hood, roof, doors, fenders, bumpers, trunk. Follow every body line and contour.',
+            'preserve': 'Keep windows transparent, headlights/taillights unchanged, wheels/tires unchanged, grille/badges/trim unchanged.',
+            'lighting': 'Match wrap reflections to existing light direction. Matte = diffuse light, Gloss = sharp reflections.',
         },
         'roof': {
-            'task': 'ROOF ACCESSORY INSTALLATION',
-            'extract_from_ref': [
-                'Exact shape and design of the roof accessory',
-                'Color and material finish',
-                'Mounting hardware style',
-                'Proportions and dimensions relative to a car',
-            ],
-            'apply_to_car': [
-                'Mount on the roof surface of the car in Image 1',
-                'Center horizontally on the roof',
-                'Position appropriately front-to-back based on accessory type',
-                'Scale to match the car\'s actual roof size',
-            ],
-            'preserve_unchanged': [
-                'Entire car body, color, and all features',
-                'All windows, lights, wheels, everything',
-                'Background and environment',
-            ],
-            'lighting_notes': 'Cast realistic shadow from the accessory onto the roof surface. Match the shadow direction to existing shadows in Image 1.',
+            'task': 'Install the roof accessory on top of the vehicle',
+            'where_to_apply': 'Mount on the roof surface, centered horizontally, positioned appropriately front-to-back. Scale to match roof size.',
+            'preserve': 'Keep entire car body, color, windows, lights, wheels exactly as in the original photo.',
+            'lighting': 'Cast realistic shadow from accessory onto roof. Match shadow direction to existing shadows.',
         },
         'body': {
-            'task': 'BODY KIT COMPONENT INSTALLATION',
-            'extract_from_ref': [
-                'Exact shape and design of the body component',
-                'Color (usually black, carbon fiber, or body-matched)',
-                'Material finish (glossy, matte, textured)',
-                'Mounting style and edge profile',
-            ],
-            'apply_to_car': [
-                'FRONT LIP: Attach to bottom edge of front bumper, follow bumper curvature',
-                'SIDE SKIRTS: Mount along rocker panel between wheel arches, follow body line',
-                'REAR SPOILER: Mount on trunk lid trailing edge or rear roof edge',
-                'Scale component to match the car\'s actual body dimensions',
-            ],
-            'preserve_unchanged': [
-                'Car body color and all original surfaces not covered by the part',
-                'All lights, grille, windows, wheels',
-                'Background and environment',
-            ],
-            'lighting_notes': 'Add subtle shadow underneath the component where it meets the car body. Match reflections to existing light sources.',
+            'task': 'Install the body kit component on the vehicle',
+            'where_to_apply': 'FRONT SPLITTER: bottom of front bumper. SIDE STEPS: along rocker panels. REAR WING: top rear of roof. Scale to match car dimensions.',
+            'preserve': 'Keep car body color unchanged, all lights/windows/wheels unchanged.',
+            'lighting': 'Add subtle shadow where component meets car body. Match reflections to existing light sources.',
         },
     }
     
     spec = category_instructions.get(part_category, category_instructions['body'])
     
-    # Build the structured prompt
-    extract_list = '\n'.join([f'   • {item}' for item in spec['extract_from_ref']])
-    apply_list = '\n'.join([f'   • {item}' for item in spec['apply_to_car']])
-    preserve_list = '\n'.join([f'   • {item}' for item in spec['preserve_unchanged']])
-    
-    return f"""You are editing a customer's car photo. DO NOT change the photo's composition.
+    return f"""You are a professional automotive photo editor. Edit the customer's car photo.
 
-## THE TWO IMAGES:
+=== STRICT RULES ===
 
-**FIRST IMAGE (Customer's Car Upload):**
-- This defines EVERYTHING about the output composition
-- COPY EXACTLY: Camera angle, viewpoint, perspective
-- COPY EXACTLY: Car position in frame, distance from camera
-- COPY EXACTLY: Background, location, environment, ground surface
-- COPY EXACTLY: Lighting direction, time of day, shadows
-- COPY EXACTLY: Car make, model, body shape, proportions
-- The output image must look like THIS PHOTO was edited
+IMAGE 1 (Customer's Car) is SACRED:
+• SAME exact camera angle and perspective
+• SAME exact car position, size, and framing in the photo
+• SAME exact background, environment, ground surface
+• SAME exact lighting direction and shadows
+• SAME exact car make, model, and body shape
+• The output MUST look like this specific photo was edited
 
-**SECOND IMAGE (Part Reference - {part_name}):**
-- IGNORE: The camera angle in this image
-- IGNORE: The car make/model in this image  
-- IGNORE: The background in this image
-- ONLY EXTRACT: The visual appearance of the {part_name}
-{extract_list}
+IMAGE 2 (Part Reference) is for STYLE ONLY:
+• IGNORE the camera angle
+• IGNORE the car make/model shown
+• IGNORE the background
+• ONLY extract the visual appearance of the part
 
-## YOUR TASK: {spec['task']}
+=== YOUR TASK ===
 
-Take the {part_name} appearance from the SECOND image and apply it to the car in the FIRST image:
-{apply_list}
+Modify the car in IMAGE 1 so it appears {ai_prompt_description}.
 
-## ABSOLUTE REQUIREMENTS FOR OUTPUT:
+{spec['task']}:
+• {spec['where_to_apply']}
 
-✓ SAME camera angle as FIRST image (if front 3/4 view, output front 3/4 view)
-✓ SAME car shape as FIRST image (if Honda Civic, output Honda Civic)
-✓ SAME background as FIRST image (if parking lot, output parking lot)
-✓ SAME framing as FIRST image (car in same position in frame)
-✓ SAME lighting as FIRST image (shadows in same direction)
+Preserve unchanged:
+• {spec['preserve']}
 
-## DO NOT:
+Lighting:
+• {spec['lighting']}
 
-✗ Use the camera angle from the SECOND image
-✗ Use the car model from the SECOND image
-✗ Use the background from the SECOND image
-✗ Change the composition in any way
+=== OUTPUT REQUIREMENTS ===
 
-## PRESERVE UNCHANGED:
-{preserve_list}
+Generate ONE photorealistic image where:
+1. The car is the EXACT same vehicle from IMAGE 1
+2. The car is in the EXACT same position/angle as IMAGE 1
+3. The background is EXACTLY the same as IMAGE 1
+4. The modification ({part_name}) is realistically applied as if professionally installed
 
-{spec['lighting_notes']}
+DO NOT:
+❌ Change the camera angle
+❌ Change the car model
+❌ Change the background
+❌ Change the car's position or size in frame
+❌ Show the reference car from IMAGE 2
 
-Generate the edited photo now. The output must be the FIRST image's car (same angle, same background) with the {part_name} applied."""
+Generate the edited photo now."""
 
 
 # ============================================

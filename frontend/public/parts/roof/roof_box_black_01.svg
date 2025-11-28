@@ -1,7 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="200" height="150" viewBox="0 0 200 150">
-  <rect width="200" height="150" fill="#f3f4f6"/>
-  <rect x="25" y="45" width="150" height="50" rx="8" fill="#374151"/>
-  <rect x="30" y="50" width="140" height="40" rx="6" fill="#1f2937"/>
-  <text x="100" y="120" text-anchor="middle" fill="#666" font-family="system-ui" font-size="11" dy=".3em">Roof Box</text>
-</svg>
-

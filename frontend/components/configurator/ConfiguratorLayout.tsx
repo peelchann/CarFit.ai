@@ -9,7 +9,8 @@ import {
   PART_CATEGORIES, 
   PART_OPTIONS, 
   PartCategoryId,
-  getCategoryById 
+  getCategoryById,
+  buildAiPromptFromParts
 } from "@/lib/parts-data";
 import { useConfiguratorStore } from "@/lib/configurator-store";
 
@@ -84,10 +85,9 @@ export function ConfiguratorLayout() {
         reader.readAsDataURL(partImageBlob);
       });
 
-      // Build a combined description for multi-part generation
-      const combinedDescription = selectedParts
-        .map(p => `${p.name} (${p.categoryId})`)
-        .join(", ");
+      // Build AI prompt description from selected parts
+      const aiPromptDescription = buildAiPromptFromParts(selectedParts);
+      const partNames = selectedParts.map(p => p.name).join(", ");
 
       // Call the API
       const response = await fetch(`${API_BASE}/api/generate`, {
@@ -96,9 +96,9 @@ export function ConfiguratorLayout() {
         body: JSON.stringify({
           car_image: carImageBase64,
           part_image: partImageBase64,
-          part_name: combinedDescription,
+          part_name: partNames,
           part_category: primaryPart.categoryId,
-          part_description: `Multiple modifications: ${combinedDescription}`,
+          part_description: aiPromptDescription,
           // Additional data for multi-part generation
           all_parts: partsData,
         }),
