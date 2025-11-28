@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { LayeredVisualizer } from "./LayeredVisualizer";
 import { ScrollspyNav } from "./ScrollspyNav";
 import { CategorySection } from "./CategorySection";
@@ -40,10 +40,18 @@ export function ConfiguratorLayout() {
     isPartSelected,
   } = useConfiguratorStore();
 
+  // Mobile preview expansion state
+  const [isPreviewExpanded, setIsPreviewExpanded] = useState(false);
+
   const totalPrice = getTotalPrice();
   const selectionCount = getSelectionCount();
   const selectedParts = getSelectedParts();
   const canGenerate = !!carImage && selectionCount > 0;
+
+  // Toggle preview expansion (mobile only)
+  const handlePreviewTap = useCallback(() => {
+    setIsPreviewExpanded(prev => !prev);
+  }, []);
 
   // ==========================================
   // AI GENERATION HANDLER
@@ -129,13 +137,25 @@ export function ConfiguratorLayout() {
       {/* Split Screen Layout */}
       <div className="flex flex-col lg:flex-row h-screen">
         
-        {/* LEFT COLUMN - Layered Visualizer (Full Height) */}
-        <div className="h-64 lg:h-screen lg:w-[62%] lg:fixed lg:left-0 lg:top-0 bg-gradient-to-br from-gray-900 via-gray-800 to-black">
-          <LayeredVisualizer />
+        {/* LEFT COLUMN - Layered Visualizer */}
+        {/* Mobile: Collapsible 40vh/70vh, Desktop: Fixed 62% full height */}
+        <div 
+          className={`
+            ${isPreviewExpanded ? 'h-[70vh]' : 'h-[40vh]'} 
+            lg:h-screen lg:w-[62%] lg:fixed lg:left-0 lg:top-0 
+            bg-gradient-to-br from-gray-900 via-gray-800 to-black
+            transition-all duration-300 ease-in-out
+            flex-shrink-0
+          `}
+        >
+          <LayeredVisualizer 
+            onTapExpand={handlePreviewTap}
+            isExpanded={isPreviewExpanded}
+          />
         </div>
 
         {/* RIGHT COLUMN - Sidebar with Scroll Area + Sticky Footer */}
-        <div className="flex-1 lg:w-[38%] lg:ml-[62%] flex flex-col h-screen border-l border-gray-200 bg-white">
+        <div className="flex-1 lg:w-[38%] lg:ml-[62%] flex flex-col min-h-0 border-l border-gray-200 bg-white">
           
           {/* Sticky Navigation */}
           <ScrollspyNav categories={PART_CATEGORIES} />
@@ -196,49 +216,91 @@ export function ConfiguratorLayout() {
             </div>
           </div>
 
-          {/* Sticky Footer - Clean White Design */}
-          <div className="flex-shrink-0 bg-white border-t border-gray-100 p-6 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
-            {/* Price Summary */}
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <p className="text-sm text-gray-500">Total Price</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  ${totalPrice.toLocaleString()}
-                </p>
+          {/* Sticky Footer - Mobile Optimized with Safe Area */}
+          <div className="flex-shrink-0 bg-white border-t border-gray-100 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+            {/* Mobile: Compact single row | Desktop: Two rows */}
+            <div className="p-4 lg:p-6 pb-[max(1rem,env(safe-area-inset-bottom))] lg:pb-6">
+              
+              {/* Mobile Layout: Price + Button in one row */}
+              <div className="flex lg:hidden items-center gap-3">
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs text-gray-500">Total</p>
+                  <p className="text-lg font-bold text-gray-900">
+                    ${totalPrice.toLocaleString()}
+                  </p>
+                </div>
+                <button
+                  onClick={handleGenerate}
+                  disabled={!canGenerate || isGenerating}
+                  className={`
+                    flex-shrink-0 px-5 py-2.5 rounded-xl font-semibold text-white 
+                    transition-all text-sm
+                    ${canGenerate && !isGenerating
+                      ? "bg-blue-600 active:scale-[0.98]"
+                      : "bg-gray-300 cursor-not-allowed"
+                    }
+                  `}
+                >
+                  {isGenerating ? (
+                    <span className="flex items-center gap-2">
+                      <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      Generating...
+                    </span>
+                  ) : !carImage ? (
+                    "Upload First"
+                  ) : selectionCount === 0 ? (
+                    "Select Parts"
+                  ) : (
+                    "Generate"
+                  )}
+                </button>
               </div>
-              {selectionCount > 0 && (
-                <p className="text-xs text-gray-400 text-right max-w-[150px] truncate">
-                  {selectedParts.map(p => p.name).join(', ')}
-                </p>
-              )}
-            </div>
 
-            {/* Generate Button - Full Width */}
-            <button
-              onClick={handleGenerate}
-              disabled={!canGenerate || isGenerating}
-              className={`
-                w-full py-3.5 rounded-xl font-semibold text-white 
-                transition-all text-base
-                ${canGenerate && !isGenerating
-                  ? "bg-blue-600 hover:bg-blue-700 shadow-lg hover:shadow-xl active:scale-[0.98]"
-                  : "bg-gray-300 cursor-not-allowed"
-                }
-              `}
-            >
-              {isGenerating ? (
-                <span className="flex items-center justify-center gap-2">
-                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  Generating Preview...
-                </span>
-              ) : !carImage ? (
-                "Upload a Photo First"
-              ) : selectionCount === 0 ? (
-                "Select Options to Continue"
-              ) : (
-                "Generate Preview"
-              )}
-            </button>
+              {/* Desktop Layout: Two rows */}
+              <div className="hidden lg:block">
+                {/* Price Summary */}
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <p className="text-sm text-gray-500">Total Price</p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      ${totalPrice.toLocaleString()}
+                    </p>
+                  </div>
+                  {selectionCount > 0 && (
+                    <p className="text-xs text-gray-400 text-right max-w-[150px] truncate">
+                      {selectedParts.map(p => p.name).join(', ')}
+                    </p>
+                  )}
+                </div>
+
+                {/* Generate Button - Full Width */}
+                <button
+                  onClick={handleGenerate}
+                  disabled={!canGenerate || isGenerating}
+                  className={`
+                    w-full py-3.5 rounded-xl font-semibold text-white 
+                    transition-all text-base
+                    ${canGenerate && !isGenerating
+                      ? "bg-blue-600 hover:bg-blue-700 shadow-lg hover:shadow-xl active:scale-[0.98]"
+                      : "bg-gray-300 cursor-not-allowed"
+                    }
+                  `}
+                >
+                  {isGenerating ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      Generating Preview...
+                    </span>
+                  ) : !carImage ? (
+                    "Upload a Photo First"
+                  ) : selectionCount === 0 ? (
+                    "Select Options to Continue"
+                  ) : (
+                    "Generate Preview"
+                  )}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>

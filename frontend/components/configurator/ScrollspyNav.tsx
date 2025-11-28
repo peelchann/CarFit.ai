@@ -59,14 +59,14 @@ export function ScrollspyNav({ categories }: ScrollspyNavProps) {
 
   return (
     <nav className="sticky top-0 z-10 bg-white/95 backdrop-blur-md border-b border-gray-200">
-      <div className="px-6 py-4">
-        {/* Section Title */}
-        <h1 className="text-lg font-bold text-gray-900 mb-3">
+      <div className="px-4 lg:px-6 py-3 lg:py-4">
+        {/* Section Title - Hidden on mobile to save space */}
+        <h1 className="hidden lg:block text-lg font-bold text-gray-900 mb-3">
           Customize Your Ride
         </h1>
 
-        {/* Tab Navigation */}
-        <div className="flex gap-1 overflow-x-auto scrollbar-hide -mx-2 px-2 pb-1">
+        {/* Tab Navigation - Tighter on mobile */}
+        <div className="flex gap-1 overflow-x-auto scrollbar-hide -mx-1 px-1 pb-0.5 lg:pb-1">
           {categories.map((category) => {
             const isActive = activeId === category.id;
             
@@ -75,7 +75,9 @@ export function ScrollspyNav({ categories }: ScrollspyNavProps) {
                 key={category.id}
                 onClick={() => handleClick(category.id)}
                 className={`
-                  relative flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium
+                  relative flex items-center gap-1.5 lg:gap-2 
+                  px-3 py-1.5 lg:px-4 lg:py-2 
+                  rounded-full text-xs lg:text-sm font-medium
                   whitespace-nowrap transition-all duration-200
                   ${isActive 
                     ? "bg-gray-900 text-white shadow-md" 

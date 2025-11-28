@@ -79,8 +79,9 @@ export function OptionCard({
     <motion.button
       onClick={onSelect}
       className={`
-        w-full grid grid-cols-[96px_1fr_24px] gap-3 items-center
-        p-3 rounded-xl border-2 transition-all duration-200
+        w-full grid grid-cols-[64px_1fr_20px] lg:grid-cols-[96px_1fr_24px] 
+        gap-2 lg:gap-3 items-center
+        p-2 lg:p-3 rounded-xl border-2 transition-all duration-200
         text-left cursor-pointer
         ${isSelected 
           ? "border-blue-600 bg-blue-50" 
@@ -90,8 +91,8 @@ export function OptionCard({
       whileHover={{ scale: 1.005 }}
       whileTap={{ scale: 0.995 }}
     >
-      {/* Column 1: Image Thumbnail (Fixed 96px x 64px) */}
-      <div className="w-24 h-16 rounded-lg overflow-hidden bg-gray-100 relative flex-shrink-0">
+      {/* Column 1: Image Thumbnail - Mobile: 64x48, Desktop: 96x64 */}
+      <div className="w-16 h-12 lg:w-24 lg:h-16 rounded-lg overflow-hidden bg-gray-100 relative flex-shrink-0">
         {imageError ? (
           // Fallback: Try SVG version, then colored placeholder
           <FallbackImage 
@@ -104,7 +105,7 @@ export function OptionCard({
             src={option.imagePath}
             alt={option.name}
             fill
-            sizes="96px"
+            sizes="(max-width: 1024px) 64px, 96px"
             className="object-cover"
             onError={() => setImageError(true)}
             unoptimized
@@ -113,22 +114,22 @@ export function OptionCard({
       </div>
 
       {/* Column 2: Text Content (Flexible) */}
-      <div className="min-w-0 py-1">
-        <h3 className="font-semibold text-gray-900 truncate text-sm">
+      <div className="min-w-0 py-0.5 lg:py-1">
+        <h3 className="font-semibold text-gray-900 truncate text-xs lg:text-sm">
           {option.name}
         </h3>
-        <p className="text-sm font-bold text-gray-700 mt-0.5">
+        <p className="text-xs lg:text-sm font-bold text-gray-700 mt-0.5">
           {option.price === 0 ? "Included" : `+$${option.price.toLocaleString()}`}
         </p>
       </div>
 
-      {/* Column 3: Selection Indicator (Fixed 24px) */}
-      <div className="w-6 h-6 flex items-center justify-center flex-shrink-0">
+      {/* Column 3: Selection Indicator - Mobile: 20px, Desktop: 24px */}
+      <div className="w-5 h-5 lg:w-6 lg:h-6 flex items-center justify-center flex-shrink-0">
         {isRadio ? (
           // Radio button style (circle)
           <div
             className={`
-              w-5 h-5 rounded-full border-2 flex items-center justify-center
+              w-4 h-4 lg:w-5 lg:h-5 rounded-full border-2 flex items-center justify-center
               transition-all duration-200
               ${isSelected 
                 ? "bg-blue-600 border-blue-600" 
@@ -140,7 +141,7 @@ export function OptionCard({
               <motion.div
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
-                className="w-2 h-2 rounded-full bg-white"
+                className="w-1.5 h-1.5 lg:w-2 lg:h-2 rounded-full bg-white"
               />
             )}
           </div>
@@ -148,7 +149,7 @@ export function OptionCard({
           // Checkbox style (square)
           <div
             className={`
-              w-5 h-5 rounded border-2 flex items-center justify-center
+              w-4 h-4 lg:w-5 lg:h-5 rounded border-2 flex items-center justify-center
               transition-all duration-200
               ${isSelected 
                 ? "bg-blue-600 border-blue-600" 
@@ -161,7 +162,7 @@ export function OptionCard({
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
               >
-                <Check className="w-3 h-3 text-white" strokeWidth={3} />
+                <Check className="w-2.5 h-2.5 lg:w-3 lg:h-3 text-white" strokeWidth={3} />
               </motion.div>
             )}
           </div>
