@@ -1,7 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import { motion } from "framer-motion";
-import { Check } from "lucide-react";
+import { Check, ImageIcon } from "lucide-react";
 import Image from "next/image";
 import { PartOption, SelectionType } from "@/lib/parts-data";
 
@@ -32,6 +33,19 @@ export function OptionCard({
   onSelect 
 }: OptionCardProps) {
   const isRadio = type === 'exclusive';
+  const [imageError, setImageError] = useState(false);
+
+  // Get a color based on option name for fallback
+  const getFallbackColor = (name: string) => {
+    if (name.toLowerCase().includes('black')) return 'bg-gray-800';
+    if (name.toLowerCase().includes('chrome') || name.toLowerCase().includes('silver')) return 'bg-gray-400';
+    if (name.toLowerCase().includes('color shift') || name.toLowerCase().includes('purple')) return 'bg-purple-500';
+    if (name.toLowerCase().includes('roof')) return 'bg-amber-600';
+    if (name.toLowerCase().includes('front') || name.toLowerCase().includes('lip')) return 'bg-gray-700';
+    if (name.toLowerCase().includes('side')) return 'bg-blue-600';
+    if (name.toLowerCase().includes('spoiler')) return 'bg-red-600';
+    return 'bg-gray-500';
+  };
 
   return (
     <motion.button
@@ -50,13 +64,22 @@ export function OptionCard({
     >
       {/* Column 1: Image Thumbnail (Fixed 96px x 64px) */}
       <div className="w-24 h-16 rounded-lg overflow-hidden bg-gray-100 relative flex-shrink-0">
-        <Image
-          src={option.imagePath}
-          alt={option.name}
-          fill
-          sizes="96px"
-          className="object-cover"
-        />
+        {imageError ? (
+          // Fallback: Colored placeholder with icon
+          <div className={`w-full h-full ${getFallbackColor(option.name)} flex items-center justify-center`}>
+            <ImageIcon className="w-6 h-6 text-white/60" />
+          </div>
+        ) : (
+          <Image
+            src={option.imagePath}
+            alt={option.name}
+            fill
+            sizes="96px"
+            className="object-cover"
+            onError={() => setImageError(true)}
+            unoptimized
+          />
+        )}
       </div>
 
       {/* Column 2: Text Content (Flexible) */}

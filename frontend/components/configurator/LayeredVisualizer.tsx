@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Upload, X, Loader2, Sparkles, Download, RotateCcw, Layers } from "lucide-react";
 import Image from "next/image";
@@ -283,8 +283,17 @@ interface PartLayerProps {
 
 /**
  * Individual part layer with fade-in animation
+ * Note: Layer images are placeholders - in production, replace with actual transparent PNGs
  */
 function PartLayer({ part }: PartLayerProps) {
+  const [hasError, setHasError] = useState(false);
+
+  // Don't render anything if the image failed to load
+  // The layer system requires proper transparent PNGs to work
+  if (hasError) {
+    return null;
+  }
+
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
@@ -300,6 +309,8 @@ function PartLayer({ part }: PartLayerProps) {
         fill
         sizes="100vw"
         className="object-contain"
+        onError={() => setHasError(true)}
+        unoptimized
       />
       
       {/* Layer label (optional, for debugging) */}

@@ -104,8 +104,8 @@ export const PART_OPTIONS: PartOption[] = [
     name: 'Matte Black Wrap',
     description: 'Sleek matte black finish for a stealthy look.',
     price: 2499,
-    imagePath: '/parts/wrap/wrap_matte_black_01.png',
-    layerImageUrl: '/layers/wrap/matte-black.png',
+    imagePath: '/parts/wrap/wrap_matte_black_01.svg',
+    layerImageUrl: '/layers/wrap/matte-black.svg',
     zIndex: 10,
   },
   {
@@ -114,8 +114,8 @@ export const PART_OPTIONS: PartOption[] = [
     name: 'Satin Chrome Silver',
     description: 'Mirror-like satin chrome for head-turning style.',
     price: 3499,
-    imagePath: '/parts/wrap/wrap_satin_chrome_02.png',
-    layerImageUrl: '/layers/wrap/satin-chrome.png',
+    imagePath: '/parts/wrap/wrap_satin_chrome_02.svg',
+    layerImageUrl: '/layers/wrap/satin-chrome.svg',
     zIndex: 10,
   },
   {
@@ -124,13 +124,13 @@ export const PART_OPTIONS: PartOption[] = [
     name: 'Color Shift Purple-Blue',
     description: 'Chameleon wrap that shifts colors in the light.',
     price: 3999,
-    imagePath: '/parts/wrap/wrap_color_shift_03.png',
-    layerImageUrl: '/layers/wrap/color-shift.png',
+    imagePath: '/parts/wrap/wrap_color_shift_03.svg',
+    layerImageUrl: '/layers/wrap/color-shift.svg',
     zIndex: 10,
   },
 
   // ==========================================
-  // ROOF STORAGE - ADDITIVE (pick many)
+  // ROOF STORAGE - EXCLUSIVE (pick one)
   // Z-Index: 30-45 (stacked on top)
   // ==========================================
   {
@@ -139,8 +139,8 @@ export const PART_OPTIONS: PartOption[] = [
     name: 'Silver Roof Rack Rails',
     description: 'Low-profile roof rails for mounting gear.',
     price: 199,
-    imagePath: '/parts/roof/roof_rack_silver_02.png',
-    layerImageUrl: '/layers/roof/rack-rails.png',
+    imagePath: '/parts/roof/roof_rack_silver_02.svg',
+    layerImageUrl: '/layers/roof/rack-rails.svg',
     zIndex: 30, // Base for roof accessories
   },
   {
@@ -149,8 +149,8 @@ export const PART_OPTIONS: PartOption[] = [
     name: 'Matte Black Roof Box',
     description: 'Sleek roof box for extra storage.',
     price: 449,
-    imagePath: '/parts/roof/roof_box_black_01.png',
-    layerImageUrl: '/layers/roof/box-black.png',
+    imagePath: '/parts/roof/roof_box_black_01.svg',
+    layerImageUrl: '/layers/roof/box-black.svg',
     zIndex: 40, // On top of rails
   },
   {
@@ -159,8 +159,8 @@ export const PART_OPTIONS: PartOption[] = [
     name: 'Black Roof Basket',
     description: 'Open basket for camping and outdoor trips.',
     price: 279,
-    imagePath: '/parts/roof/roof_basket_black_03.png',
-    layerImageUrl: '/layers/roof/basket-black.png',
+    imagePath: '/parts/roof/roof_basket_black_03.svg',
+    layerImageUrl: '/layers/roof/basket-black.svg',
     zIndex: 45, // Alternative to box
   },
 
@@ -174,8 +174,8 @@ export const PART_OPTIONS: PartOption[] = [
     name: 'Black Front Lip Spoiler',
     description: 'Low front lip to sharpen the front view.',
     price: 189,
-    imagePath: '/parts/body/body_frontlip_black_01.png',
-    layerImageUrl: '/layers/body/frontlip-black.png',
+    imagePath: '/parts/body/body_frontlip_black_01.svg',
+    layerImageUrl: '/layers/body/frontlip-black.svg',
     zIndex: 20,
   },
   {
@@ -184,8 +184,8 @@ export const PART_OPTIONS: PartOption[] = [
     name: 'Color-Matched Side Skirts',
     description: 'Side skirts that extend the body line.',
     price: 249,
-    imagePath: '/parts/body/body_sideskirt_color_02.png',
-    layerImageUrl: '/layers/body/sideskirt.png',
+    imagePath: '/parts/body/body_sideskirt_color_02.svg',
+    layerImageUrl: '/layers/body/sideskirt.svg',
     zIndex: 21,
   },
   {
@@ -194,8 +194,8 @@ export const PART_OPTIONS: PartOption[] = [
     name: 'Subtle Rear Roof Spoiler',
     description: 'Clean rear spoiler for a sportier silhouette.',
     price: 179,
-    imagePath: '/parts/body/body_spoiler_black_03.png',
-    layerImageUrl: '/layers/body/spoiler-black.png',
+    imagePath: '/parts/body/body_spoiler_black_03.svg',
+    layerImageUrl: '/layers/body/spoiler-black.svg',
     zIndex: 25,
   },
 ];
