@@ -4,7 +4,7 @@ import { useCallback } from "react";
 import { LayeredVisualizer } from "./LayeredVisualizer";
 import { ScrollspyNav } from "./ScrollspyNav";
 import { CategorySection } from "./CategorySection";
-import { SelectionCard } from "./SelectionCard";
+import { OptionCard } from "./OptionCard";
 import { 
   PART_CATEGORIES, 
   PART_OPTIONS, 
@@ -176,14 +176,14 @@ export function ConfiguratorLayout() {
                     </span>
                   </div>
 
-                  {/* Options */}
-                  <div className="space-y-3">
+                  {/* Options - Using unified OptionCard with CSS Grid */}
+                  <div className="space-y-2">
                     {categoryOptions.map((option) => (
-                      <SelectionCard
+                      <OptionCard
                         key={option.id}
                         option={option}
                         isSelected={isPartSelected(option.id)}
-                        selectionType={category.type}
+                        type={category.type}
                         onSelect={() => selectPart(category.id, option.id)}
                       />
                     ))}
