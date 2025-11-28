@@ -256,31 +256,52 @@ def get_car_customization_prompt(part_name: str, part_category: str, part_descri
     apply_list = '\n'.join([f'   • {item}' for item in spec['apply_to_car']])
     preserve_list = '\n'.join([f'   • {item}' for item in spec['preserve_unchanged']])
     
-    return f"""TASK: Edit the FIRST image (my car) by applying the {part_name} style from the SECOND image (reference).
+    return f"""You are editing a customer's car photo. DO NOT change the photo's composition.
 
-FIRST IMAGE = My car photo. This is what you're editing.
-SECOND IMAGE = Style reference only. Extract the {part_name} appearance from this.
+## THE TWO IMAGES:
 
-{spec['task']}:
-{apply_list}
+**FIRST IMAGE (Customer's Car Upload):**
+- This defines EVERYTHING about the output composition
+- COPY EXACTLY: Camera angle, viewpoint, perspective
+- COPY EXACTLY: Car position in frame, distance from camera
+- COPY EXACTLY: Background, location, environment, ground surface
+- COPY EXACTLY: Lighting direction, time of day, shadows
+- COPY EXACTLY: Car make, model, body shape, proportions
+- The output image must look like THIS PHOTO was edited
 
-CRITICAL RULES:
-1. Output must show MY CAR from the FIRST image
-2. Same exact camera angle as the FIRST image
-3. Same exact background as the FIRST image  
-4. Same car make/model as the FIRST image
-5. Only the {part_name} changes - everything else stays identical
-
-Extract from reference:
+**SECOND IMAGE (Part Reference - {part_name}):**
+- IGNORE: The camera angle in this image
+- IGNORE: The car make/model in this image  
+- IGNORE: The background in this image
+- ONLY EXTRACT: The visual appearance of the {part_name}
 {extract_list}
 
-Keep unchanged from my car:
+## YOUR TASK: {spec['task']}
+
+Take the {part_name} appearance from the SECOND image and apply it to the car in the FIRST image:
+{apply_list}
+
+## ABSOLUTE REQUIREMENTS FOR OUTPUT:
+
+✓ SAME camera angle as FIRST image (if front 3/4 view, output front 3/4 view)
+✓ SAME car shape as FIRST image (if Honda Civic, output Honda Civic)
+✓ SAME background as FIRST image (if parking lot, output parking lot)
+✓ SAME framing as FIRST image (car in same position in frame)
+✓ SAME lighting as FIRST image (shadows in same direction)
+
+## DO NOT:
+
+✗ Use the camera angle from the SECOND image
+✗ Use the car model from the SECOND image
+✗ Use the background from the SECOND image
+✗ Change the composition in any way
+
+## PRESERVE UNCHANGED:
 {preserve_list}
 
 {spec['lighting_notes']}
 
-OUTPUT: A single edited photo of MY CAR with the new {part_name} applied.
-The car in the output must be MY CAR, not the reference car."""
+Generate the edited photo now. The output must be the FIRST image's car (same angle, same background) with the {part_name} applied."""
 
 
 # ============================================
@@ -349,27 +370,26 @@ async def generate_car_preview(
     else:
         raise Exception("No credentials configured. Set GEMINI_API_KEY or GOOGLE_CLOUD_PROJECT_ID")
     
-    # Build content parts - CAR IMAGE FIRST to establish it as primary
-    # Research shows first image often gets more weight in multimodal models
+    # Build content parts - CAR IMAGE FIRST with explicit composition instructions
     contents = [
         {
             "role": "user",
             "parts": [
-                {"text": "Here is MY CAR that I want you to modify:"},
+                {"text": "=== CUSTOMER'S CAR PHOTO (FIRST IMAGE) ===\nThis photo defines the OUTPUT composition. Keep this EXACT angle, background, and car shape:"},
                 {
                     "inline_data": {
                         "mime_type": car_mime_type,
                         "data": base_car_image
                     }
                 },
-                {"text": "\n\nHere is a REFERENCE IMAGE showing the color/style I want to apply to MY CAR above:"},
+                {"text": "\n\n=== PART REFERENCE (SECOND IMAGE) ===\nONLY extract the part's appearance. IGNORE this image's angle/background/car model:"},
                 {
                     "inline_data": {
                         "mime_type": part_mime_type,
                         "data": parts_image
                     }
                 },
-                {"text": f"\n\n{prompt}\n\nREMEMBER: Output MY CAR (the first image) with the style from the reference. Do NOT output the reference car."}
+                {"text": f"\n\n{prompt}\n\nFINAL CHECK: Your output must have the SAME camera angle, background, and car shape as the FIRST IMAGE. Only the part appearance comes from the second image."}
             ]
         }
     ]
