@@ -1,0 +1,33 @@
+# Auto detect text files and perform LF normalization
+* text=auto
+
+# Ensure binary files are not modified by git
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.eot binary
+*.pdf binary
+*.zip binary
+
+# Text files
+*.md text
+*.txt text
+*.json text
+*.js text
+*.ts text
+*.tsx text
+*.jsx text
+*.css text
+*.scss text
+*.html text
+*.svg text
+*.xml text
+*.yml text
+*.yaml text
+

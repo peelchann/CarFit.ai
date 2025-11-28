@@ -6,6 +6,34 @@ import { Check, ImageIcon } from "lucide-react";
 import Image from "next/image";
 import { PartOption, SelectionType } from "@/lib/parts-data";
 
+/**
+ * FallbackImage - Tries SVG fallback, then shows colored placeholder
+ */
+function FallbackImage({ pngPath, name, fallbackColor }: { pngPath: string; name: string; fallbackColor: string }) {
+  const [svgError, setSvgError] = useState(false);
+  const svgPath = pngPath.replace('.png', '.svg');
+
+  if (svgError) {
+    return (
+      <div className={`w-full h-full ${fallbackColor} flex items-center justify-center`}>
+        <ImageIcon className="w-6 h-6 text-white/60" />
+      </div>
+    );
+  }
+
+  return (
+    <Image
+      src={svgPath}
+      alt={name}
+      fill
+      sizes="96px"
+      className="object-cover"
+      onError={() => setSvgError(true)}
+      unoptimized
+    />
+  );
+}
+
 interface OptionCardProps {
   option: PartOption;
   isSelected: boolean;
@@ -65,10 +93,12 @@ export function OptionCard({
       {/* Column 1: Image Thumbnail (Fixed 96px x 64px) */}
       <div className="w-24 h-16 rounded-lg overflow-hidden bg-gray-100 relative flex-shrink-0">
         {imageError ? (
-          // Fallback: Colored placeholder with icon
-          <div className={`w-full h-full ${getFallbackColor(option.name)} flex items-center justify-center`}>
-            <ImageIcon className="w-6 h-6 text-white/60" />
-          </div>
+          // Fallback: Try SVG version, then colored placeholder
+          <FallbackImage 
+            pngPath={option.imagePath}
+            name={option.name}
+            fallbackColor={getFallbackColor(option.name)}
+          />
         ) : (
           <Image
             src={option.imagePath}
