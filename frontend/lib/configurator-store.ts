@@ -15,10 +15,7 @@ import { create } from 'zustand';
 import { 
   PartCategoryId, 
   PartOption, 
-  PART_OPTIONS, 
-  PART_CATEGORIES,
   getPartById,
-  isExclusiveCategory,
   getLayersSortedByZIndex 
 } from './parts-data';
 
@@ -95,31 +92,29 @@ export const useConfiguratorStore = create<ConfiguratorState>((set, get) => ({
    */
   selectPart: (categoryId: PartCategoryId, partId: string) => {
     set((state) => {
-      const newSelections = { ...state.selections };
-      
-      if (isExclusiveCategory(categoryId)) {
-        // EXCLUSIVE: Replace previous selection
-        // Toggle off if already selected
-        if (newSelections[categoryId] === partId) {
-          newSelections[categoryId] = null;
-        } else {
-          newSelections[categoryId] = partId;
-        }
-      } else {
-        // ADDITIVE: Toggle in array
-        const currentArray = newSelections[categoryId] as string[];
-        if (currentArray.includes(partId)) {
-          // Remove if already selected
-          newSelections[categoryId] = currentArray.filter(id => id !== partId) as any;
-        } else {
-          // Add to selection
-          newSelections[categoryId] = [...currentArray, partId] as any;
-        }
+      // Handle exclusive category (wrap)
+      if (categoryId === 'wrap') {
+        return {
+          selections: {
+            ...state.selections,
+            wrap: state.selections.wrap === partId ? null : partId,
+          },
+          resultImage: null,
+          aiMessage: null,
+        };
       }
       
-      return { 
-        selections: newSelections,
-        // Clear result when selection changes
+      // Handle additive categories (roof, body)
+      const currentArray = state.selections[categoryId];
+      const newArray = currentArray.includes(partId)
+        ? currentArray.filter(id => id !== partId)
+        : [...currentArray, partId];
+      
+      return {
+        selections: {
+          ...state.selections,
+          [categoryId]: newArray,
+        },
         resultImage: null,
         aiMessage: null,
       };
@@ -131,18 +126,23 @@ export const useConfiguratorStore = create<ConfiguratorState>((set, get) => ({
    */
   deselectPart: (categoryId: PartCategoryId, partId: string) => {
     set((state) => {
-      const newSelections = { ...state.selections };
-      
-      if (isExclusiveCategory(categoryId)) {
-        if (newSelections[categoryId] === partId) {
-          newSelections[categoryId] = null;
-        }
-      } else {
-        const currentArray = newSelections[categoryId] as string[];
-        newSelections[categoryId] = currentArray.filter(id => id !== partId) as any;
+      // Handle exclusive category (wrap)
+      if (categoryId === 'wrap') {
+        return {
+          selections: {
+            ...state.selections,
+            wrap: state.selections.wrap === partId ? null : state.selections.wrap,
+          },
+        };
       }
       
-      return { selections: newSelections };
+      // Handle additive categories (roof, body)
+      return {
+        selections: {
+          ...state.selections,
+          [categoryId]: state.selections[categoryId].filter(id => id !== partId),
+        },
+      };
     });
   },
 
@@ -151,15 +151,23 @@ export const useConfiguratorStore = create<ConfiguratorState>((set, get) => ({
    */
   clearCategory: (categoryId: PartCategoryId) => {
     set((state) => {
-      const newSelections = { ...state.selections };
-      
-      if (isExclusiveCategory(categoryId)) {
-        newSelections[categoryId] = null;
-      } else {
-        newSelections[categoryId] = [] as any;
+      // Handle exclusive category (wrap)
+      if (categoryId === 'wrap') {
+        return {
+          selections: {
+            ...state.selections,
+            wrap: null,
+          },
+        };
       }
       
-      return { selections: newSelections };
+      // Handle additive categories (roof, body)
+      return {
+        selections: {
+          ...state.selections,
+          [categoryId]: [],
+        },
+      };
     });
   },
 
