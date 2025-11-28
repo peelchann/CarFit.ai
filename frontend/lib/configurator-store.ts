@@ -29,7 +29,7 @@ interface ConfiguratorState {
   // For additive categories: stores array of IDs
   selections: {
     wrap: string | null;      // Exclusive: one wrap color
-    roof: string[];           // Additive: multiple roof accessories
+    roof: string | null;      // Exclusive: one roof accessory
     body: string[];           // Additive: multiple body parts
   };
   
@@ -66,7 +66,7 @@ interface ConfiguratorState {
 
 const initialSelections = {
   wrap: null,
-  roof: [],
+  roof: null,
   body: [],
 };
 
@@ -92,7 +92,7 @@ export const useConfiguratorStore = create<ConfiguratorState>((set, get) => ({
    */
   selectPart: (categoryId: PartCategoryId, partId: string) => {
     set((state) => {
-      // Handle exclusive category (wrap)
+      // Handle exclusive categories (wrap, roof)
       if (categoryId === 'wrap') {
         return {
           selections: {
@@ -104,8 +104,19 @@ export const useConfiguratorStore = create<ConfiguratorState>((set, get) => ({
         };
       }
       
-      // Handle additive categories (roof, body)
-      const currentArray = state.selections[categoryId];
+      if (categoryId === 'roof') {
+        return {
+          selections: {
+            ...state.selections,
+            roof: state.selections.roof === partId ? null : partId,
+          },
+          resultImage: null,
+          aiMessage: null,
+        };
+      }
+      
+      // Handle additive category (body)
+      const currentArray = state.selections.body;
       const newArray = currentArray.includes(partId)
         ? currentArray.filter(id => id !== partId)
         : [...currentArray, partId];
@@ -113,7 +124,7 @@ export const useConfiguratorStore = create<ConfiguratorState>((set, get) => ({
       return {
         selections: {
           ...state.selections,
-          [categoryId]: newArray,
+          body: newArray,
         },
         resultImage: null,
         aiMessage: null,
@@ -126,7 +137,7 @@ export const useConfiguratorStore = create<ConfiguratorState>((set, get) => ({
    */
   deselectPart: (categoryId: PartCategoryId, partId: string) => {
     set((state) => {
-      // Handle exclusive category (wrap)
+      // Handle exclusive categories (wrap, roof)
       if (categoryId === 'wrap') {
         return {
           selections: {
@@ -136,11 +147,20 @@ export const useConfiguratorStore = create<ConfiguratorState>((set, get) => ({
         };
       }
       
-      // Handle additive categories (roof, body)
+      if (categoryId === 'roof') {
+        return {
+          selections: {
+            ...state.selections,
+            roof: state.selections.roof === partId ? null : state.selections.roof,
+          },
+        };
+      }
+      
+      // Handle additive category (body)
       return {
         selections: {
           ...state.selections,
-          [categoryId]: state.selections[categoryId].filter(id => id !== partId),
+          body: state.selections.body.filter(id => id !== partId),
         },
       };
     });
@@ -151,7 +171,7 @@ export const useConfiguratorStore = create<ConfiguratorState>((set, get) => ({
    */
   clearCategory: (categoryId: PartCategoryId) => {
     set((state) => {
-      // Handle exclusive category (wrap)
+      // Handle exclusive categories (wrap, roof)
       if (categoryId === 'wrap') {
         return {
           selections: {
@@ -161,11 +181,20 @@ export const useConfiguratorStore = create<ConfiguratorState>((set, get) => ({
         };
       }
       
-      // Handle additive categories (roof, body)
+      if (categoryId === 'roof') {
+        return {
+          selections: {
+            ...state.selections,
+            roof: null,
+          },
+        };
+      }
+      
+      // Handle additive category (body)
       return {
         selections: {
           ...state.selections,
-          [categoryId]: [],
+          body: [],
         },
       };
     });
@@ -236,7 +265,9 @@ export const useConfiguratorStore = create<ConfiguratorState>((set, get) => ({
     if (selections.wrap) {
       selectedIds.push(selections.wrap);
     }
-    selectedIds.push(...selections.roof);
+    if (selections.roof) {
+      selectedIds.push(selections.roof);
+    }
     selectedIds.push(...selections.body);
     
     // Convert to PartOption objects
@@ -255,7 +286,9 @@ export const useConfiguratorStore = create<ConfiguratorState>((set, get) => ({
     if (selections.wrap) {
       selectedIds.push(selections.wrap);
     }
-    selectedIds.push(...selections.roof);
+    if (selections.roof) {
+      selectedIds.push(selections.roof);
+    }
     selectedIds.push(...selections.body);
     
     return getLayersSortedByZIndex(selectedIds);
@@ -277,7 +310,7 @@ export const useConfiguratorStore = create<ConfiguratorState>((set, get) => ({
     let count = 0;
     
     if (selections.wrap) count++;
-    count += selections.roof.length;
+    if (selections.roof) count++;
     count += selections.body.length;
     
     return count;
@@ -291,9 +324,9 @@ export const useConfiguratorStore = create<ConfiguratorState>((set, get) => ({
     
     // Check exclusive categories
     if (selections.wrap === partId) return true;
+    if (selections.roof === partId) return true;
     
-    // Check additive categories
-    if (selections.roof.includes(partId)) return true;
+    // Check additive category
     if (selections.body.includes(partId)) return true;
     
     return false;

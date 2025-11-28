@@ -125,114 +125,120 @@ export function ConfiguratorLayout() {
   }, [carImage, selectedParts, selectionCount, setIsGenerating, setResultImage, setAiMessage]);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="h-screen overflow-hidden">
       {/* Split Screen Layout */}
-      <div className="flex flex-col lg:flex-row lg:h-screen">
+      <div className="flex flex-col lg:flex-row h-screen">
         
-        {/* LEFT COLUMN - Layered Visualizer (62%) */}
-        <div className="h-72 lg:h-full lg:w-[62%] lg:fixed lg:left-0 lg:top-0 bg-gradient-to-br from-gray-900 via-gray-800 to-black">
+        {/* LEFT COLUMN - Layered Visualizer (Full Height) */}
+        <div className="h-64 lg:h-screen lg:w-[62%] lg:fixed lg:left-0 lg:top-0 bg-gradient-to-br from-gray-900 via-gray-800 to-black">
           <LayeredVisualizer />
         </div>
 
-        {/* RIGHT COLUMN - Scrollable Controls (38%) */}
-        <div className="flex-1 lg:w-[38%] lg:ml-[62%] bg-white min-h-screen">
+        {/* RIGHT COLUMN - Sidebar with Scroll Area + Sticky Footer */}
+        <div className="flex-1 lg:w-[38%] lg:ml-[62%] flex flex-col h-screen border-l border-gray-200 bg-white">
+          
           {/* Sticky Navigation */}
           <ScrollspyNav categories={PART_CATEGORIES} />
 
-          {/* Configuration Sections */}
-          <div className="px-4 lg:px-6 pb-32">
-            {PART_CATEGORIES.map((category) => {
-              const categoryOptions = PART_OPTIONS.filter(
-                (opt) => opt.categoryId === category.id
-              );
-              
-              return (
-                <CategorySection
-                  key={category.id}
-                  id={category.id}
-                  title={category.label}
-                  description={category.description}
-                  icon={category.icon}
-                >
-                  {/* Selection Type Hint */}
-                  <div className="mb-3 flex items-center gap-2">
-                    <span className={`
-                      text-xs px-2 py-1 rounded-full font-medium
-                      ${category.type === 'exclusive' 
-                        ? "bg-orange-100 text-orange-700" 
-                        : "bg-blue-100 text-blue-700"
-                      }
-                    `}>
-                      {category.type === 'exclusive' 
-                        ? "Select One" 
-                        : "Select Multiple"
-                      }
-                    </span>
-                    <span className="text-xs text-gray-400">
-                      {category.type === 'exclusive' 
-                        ? "Choosing a new option replaces the current one" 
-                        : "Add as many as you like"
-                      }
-                    </span>
-                  </div>
+          {/* Scrollable Content Area */}
+          <div className="flex-1 overflow-y-auto">
+            <div className="px-6 pb-6">
+              {PART_CATEGORIES.map((category) => {
+                const categoryOptions = PART_OPTIONS.filter(
+                  (opt) => opt.categoryId === category.id
+                );
+                
+                return (
+                  <CategorySection
+                    key={category.id}
+                    id={category.id}
+                    title={category.label}
+                    description={category.description}
+                    icon={category.icon}
+                  >
+                    {/* Selection Type Hint */}
+                    <div className="mb-3 flex items-center gap-2">
+                      <span className={`
+                        text-xs px-2 py-1 rounded-full font-medium
+                        ${category.type === 'exclusive' 
+                          ? "bg-orange-100 text-orange-700" 
+                          : "bg-blue-100 text-blue-700"
+                        }
+                      `}>
+                        {category.type === 'exclusive' 
+                          ? "Select One" 
+                          : "Select Multiple"
+                        }
+                      </span>
+                      <span className="text-xs text-gray-400">
+                        {category.type === 'exclusive' 
+                          ? "Choosing a new option replaces the current one" 
+                          : "Add as many as you like"
+                        }
+                      </span>
+                    </div>
 
-                  {/* Options - Using unified OptionCard with CSS Grid */}
-                  <div className="space-y-2">
-                    {categoryOptions.map((option) => (
-                      <OptionCard
-                        key={option.id}
-                        option={option}
-                        isSelected={isPartSelected(option.id)}
-                        type={category.type}
-                        onSelect={() => selectPart(category.id, option.id)}
-                      />
-                    ))}
-                  </div>
-                </CategorySection>
-              );
-            })}
+                    {/* Options - Using unified OptionCard with CSS Grid */}
+                    <div className="space-y-2">
+                      {categoryOptions.map((option) => (
+                        <OptionCard
+                          key={option.id}
+                          option={option}
+                          isSelected={isPartSelected(option.id)}
+                          type={category.type}
+                          onSelect={() => selectPart(category.id, option.id)}
+                        />
+                      ))}
+                    </div>
+                  </CategorySection>
+                );
+              })}
+            </div>
           </div>
 
-          {/* Fixed Bottom Summary Bar */}
-          <div className="fixed bottom-0 right-0 lg:w-[38%] w-full bg-white border-t border-gray-200 shadow-lg z-50">
-            <div className="px-4 lg:px-6 py-4 flex items-center justify-between gap-4">
-              <div className="min-w-0">
-                <p className="text-xs lg:text-sm text-gray-500 truncate">
-                  {selectionCount === 0 
-                    ? "No modifications selected" 
-                    : `${selectionCount} layer${selectionCount !== 1 ? 's' : ''} • ${selectedParts.map(p => p.name).join(', ')}`
-                  }
-                </p>
-                <p className="text-xl lg:text-2xl font-bold text-gray-900">
+          {/* Sticky Footer - Clean White Design */}
+          <div className="flex-shrink-0 bg-white border-t border-gray-100 p-6 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+            {/* Price Summary */}
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <p className="text-sm text-gray-500">Total Price</p>
+                <p className="text-2xl font-bold text-gray-900">
                   ${totalPrice.toLocaleString()}
                 </p>
               </div>
-              <button
-                onClick={handleGenerate}
-                disabled={!canGenerate || isGenerating}
-                className={`
-                  flex-shrink-0 px-6 lg:px-8 py-3 rounded-full font-semibold text-white 
-                  transition-all text-sm lg:text-base
-                  ${canGenerate && !isGenerating
-                    ? "bg-black hover:bg-gray-800 shadow-lg hover:shadow-xl active:scale-95"
-                    : "bg-gray-300 cursor-not-allowed"
-                  }
-                `}
-              >
-                {isGenerating ? (
-                  <span className="flex items-center gap-2">
-                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    Generating...
-                  </span>
-                ) : !carImage ? (
-                  "Upload Photo First"
-                ) : selectionCount === 0 ? (
-                  "Select Options"
-                ) : (
-                  `Generate with ${selectionCount} Layer${selectionCount !== 1 ? 's' : ''}`
-                )}
-              </button>
+              {selectionCount > 0 && (
+                <p className="text-xs text-gray-400 text-right max-w-[150px] truncate">
+                  {selectedParts.map(p => p.name).join(', ')}
+                </p>
+              )}
             </div>
+
+            {/* Generate Button - Full Width */}
+            <button
+              onClick={handleGenerate}
+              disabled={!canGenerate || isGenerating}
+              className={`
+                w-full py-3.5 rounded-xl font-semibold text-white 
+                transition-all text-base
+                ${canGenerate && !isGenerating
+                  ? "bg-blue-600 hover:bg-blue-700 shadow-lg hover:shadow-xl active:scale-[0.98]"
+                  : "bg-gray-300 cursor-not-allowed"
+                }
+              `}
+            >
+              {isGenerating ? (
+                <span className="flex items-center justify-center gap-2">
+                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  Generating Preview...
+                </span>
+              ) : !carImage ? (
+                "Upload a Photo First"
+              ) : selectionCount === 0 ? (
+                "Select Options to Continue"
+              ) : (
+                "Generate Preview"
+              )}
+            </button>
           </div>
         </div>
       </div>

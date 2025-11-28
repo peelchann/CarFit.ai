@@ -60,6 +60,11 @@ export function LayeredVisualizer() {
   if (resultImage) {
     return (
       <div className="relative h-full w-full flex flex-col">
+        {/* Logo Watermark - Glass Style */}
+        <div className="absolute top-6 left-6 z-20 border-2 border-white/30 text-white font-bold text-xl px-4 py-1 rounded backdrop-blur-md">
+          CarFit Studio
+        </div>
+
         <div className="flex-1 relative">
           <Image
             src={resultImage}
@@ -83,7 +88,7 @@ export function LayeredVisualizer() {
         </div>
 
         {/* Action Buttons */}
-        <div className="absolute top-4 right-4 flex gap-2">
+        <div className="absolute top-6 right-6 flex gap-2 z-20">
           <button
             onClick={clearAll}
             className="p-2 bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-full text-white transition-colors"
@@ -104,7 +109,7 @@ export function LayeredVisualizer() {
         <motion.div
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="absolute top-4 left-4 bg-green-500 text-white px-3 py-1 rounded-full text-sm font-medium flex items-center gap-1"
+          className="absolute bottom-6 left-6 bg-green-500 text-white px-3 py-1 rounded-full text-sm font-medium flex items-center gap-1 z-20"
         >
           <Sparkles className="w-4 h-4" />
           AI Generated
@@ -118,7 +123,12 @@ export function LayeredVisualizer() {
   // ==========================================
   if (carImage && carImageUrl) {
     return (
-      <div className="relative h-full w-full">
+      <div className="relative h-screen w-full">
+        {/* Logo Watermark - Glass Style */}
+        <div className="absolute top-6 left-6 z-20 border-2 border-white/30 text-white font-bold text-xl px-4 py-1 rounded backdrop-blur-md">
+          CarFit Studio
+        </div>
+
         {/* Layer Stack Container */}
         <div className="absolute inset-0 flex items-center justify-center p-4">
           <div className="relative w-full h-full max-w-3xl max-h-full">
@@ -179,7 +189,7 @@ export function LayeredVisualizer() {
         {/* Clear Button */}
         <button
           onClick={clearAll}
-          className="absolute top-4 right-4 p-2 bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-full text-white transition-colors z-40"
+          className="absolute top-6 right-6 p-2 bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-full text-white transition-colors z-20"
           title="Remove Image"
         >
           <X className="w-5 h-5" />
@@ -190,7 +200,7 @@ export function LayeredVisualizer() {
           <motion.div
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="absolute top-4 left-4 bg-blue-500 text-white px-3 py-1 rounded-full text-sm font-medium flex items-center gap-2 z-40"
+            className="absolute bottom-6 left-6 bg-blue-500 text-white px-3 py-1 rounded-full text-sm font-medium flex items-center gap-2 z-20"
           >
             <Layers className="w-4 h-4" />
             {selectionCount} Layer{selectionCount !== 1 ? 's' : ''}
@@ -198,7 +208,7 @@ export function LayeredVisualizer() {
         )}
 
         {/* Upload Info */}
-        <div className="absolute bottom-4 left-4 bg-black/50 backdrop-blur-sm px-3 py-1 rounded-full z-40">
+        <div className="absolute bottom-6 right-6 bg-black/50 backdrop-blur-sm px-3 py-1 rounded-full z-20">
           <p className="text-white/80 text-xs">Your Vehicle • Live Preview</p>
         </div>
       </div>
@@ -212,8 +222,13 @@ export function LayeredVisualizer() {
     <div
       onDragOver={handleDragOver}
       onDrop={handleDrop}
-      className="relative h-full w-full flex flex-col items-center justify-center p-8"
+      className="relative h-screen w-full flex flex-col items-center justify-center p-8"
     >
+      {/* Logo Watermark - Glass Style */}
+      <div className="absolute top-6 left-6 z-20 border-2 border-white/30 text-white font-bold text-xl px-4 py-1 rounded backdrop-blur-md">
+        CarFit Studio
+      </div>
+
       <input
         type="file"
         accept="image/*"

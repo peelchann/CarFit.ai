@@ -67,9 +67,9 @@ export const PART_CATEGORIES: PartCategory[] = [
   {
     id: 'roof',
     label: 'Roof Storage',
-    description: 'Add roof accessories. Mix and match multiple items.',
+    description: 'Choose ONE roof accessory for your vehicle.',
     icon: '📦',
-    type: 'additive', // User can pick MULTIPLE roof accessories
+    type: 'exclusive', // User picks ONE roof accessory
   },
   {
     id: 'body',
