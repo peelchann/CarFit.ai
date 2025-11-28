@@ -256,58 +256,31 @@ def get_car_customization_prompt(part_name: str, part_category: str, part_descri
     apply_list = '\n'.join([f'   • {item}' for item in spec['apply_to_car']])
     preserve_list = '\n'.join([f'   • {item}' for item in spec['preserve_unchanged']])
     
-    return f"""You are a professional automotive photo editor. Your job is to modify a customer's car photo.
+    return f"""TASK: Edit the FIRST image (my car) by applying the {part_name} style from the SECOND image (reference).
 
-## CRITICAL: UNDERSTAND THE TWO IMAGES
+FIRST IMAGE = My car photo. This is what you're editing.
+SECOND IMAGE = Style reference only. Extract the {part_name} appearance from this.
 
-**IMAGE 1 = THE CUSTOMER'S CAR PHOTO**
-- This is the photo you are EDITING
-- The output MUST show THIS EXACT CAR from THIS EXACT ANGLE
-- Keep: camera angle, background, lighting, car make/model, wheels, windows, everything except the modification
-
-**IMAGE 2 = REFERENCE FOR THE MODIFICATION ({part_name})**
-- This is NOT the car to output
-- ONLY extract the visual style/color/texture from this image
-- Apply those visual attributes TO the car in Image 1
-
-## YOUR TASK: {spec['task']}
-
-**From Image 2, extract ONLY these visual attributes:**
-{extract_list}
-
-**Apply those attributes to the car in Image 1:**
+{spec['task']}:
 {apply_list}
 
-**Keep these parts of Image 1 UNCHANGED:**
+CRITICAL RULES:
+1. Output must show MY CAR from the FIRST image
+2. Same exact camera angle as the FIRST image
+3. Same exact background as the FIRST image  
+4. Same car make/model as the FIRST image
+5. Only the {part_name} changes - everything else stays identical
+
+Extract from reference:
+{extract_list}
+
+Keep unchanged from my car:
 {preserve_list}
-
-## OUTPUT REQUIREMENTS
-
-Your output image must be:
-1. **THE SAME CAR as Image 1** - same make, model, body shape, wheels
-2. **THE SAME ANGLE as Image 1** - same camera position, framing, perspective
-3. **THE SAME BACKGROUND as Image 1** - same location, environment, ground
-4. **THE SAME LIGHTING as Image 1** - same shadows, highlights, time of day
-
-The ONLY change should be applying the {part_name} visual attributes from Image 2.
 
 {spec['lighting_notes']}
 
-## WHAT NOT TO DO
-
-❌ Do NOT output the car from Image 2
-❌ Do NOT change the camera angle
-❌ Do NOT change the background
-❌ Do NOT show Image 2's car
-❌ Do NOT create a collage or comparison
-❌ Do NOT add text or watermarks
-
-## SUMMARY
-
-INPUT: Image 1 (customer's car) + Image 2 (style reference)
-OUTPUT: Image 1's car with Image 2's {part_name} attributes applied
-
-Generate the modified photo of the customer's car now."""
+OUTPUT: A single edited photo of MY CAR with the new {part_name} applied.
+The car in the output must be MY CAR, not the reference car."""
 
 
 # ============================================
@@ -376,28 +349,27 @@ async def generate_car_preview(
     else:
         raise Exception("No credentials configured. Set GEMINI_API_KEY or GOOGLE_CLOUD_PROJECT_ID")
     
-    # Build content parts with explicit image labels
-    # IMPORTANT: We label each image explicitly so Gemini knows which is which
+    # Build content parts - CAR IMAGE FIRST to establish it as primary
+    # Research shows first image often gets more weight in multimodal models
     contents = [
         {
             "role": "user",
             "parts": [
-                {"text": prompt},
-                {"text": "\n\n=== IMAGE 1: THE USER'S CAR (PRIMARY REFERENCE - PRESERVE THIS EXACTLY) ==="},
+                {"text": "Here is MY CAR that I want you to modify:"},
                 {
                     "inline_data": {
                         "mime_type": car_mime_type,
                         "data": base_car_image
                     }
                 },
-                {"text": "\n\n=== IMAGE 2: THE PART TO APPLY (STYLE REFERENCE ONLY - EXTRACT ATTRIBUTES FROM THIS) ==="},
+                {"text": "\n\nHere is a REFERENCE IMAGE showing the color/style I want to apply to MY CAR above:"},
                 {
                     "inline_data": {
                         "mime_type": part_mime_type,
                         "data": parts_image
                     }
                 },
-                {"text": "\n\nNow generate a photorealistic image of the car from IMAGE 1 with the visual attributes from IMAGE 2 applied. The output must look like IMAGE 1's car, NOT IMAGE 2."}
+                {"text": f"\n\n{prompt}\n\nREMEMBER: Output MY CAR (the first image) with the style from the reference. Do NOT output the reference car."}
             ]
         }
     ]
